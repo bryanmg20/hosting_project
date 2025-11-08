@@ -1,0 +1,3 @@
+hosting.localhost {
+    reverse_proxy ui:3000
+}

@@ -1,0 +1,19 @@
+services:
+  ui:
+    build: ./ui
+    volumes:
+      - ./ui:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    command: npx vite --host 0.0.0.0 --port 3000
+
+  caddy:
+    image: caddy:alpine
+    ports:
+      - "80:80"    # Redirección HTTP→HTTPS
+      - "443:443"  # HTTPS
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    depends_on:
+      - ui
