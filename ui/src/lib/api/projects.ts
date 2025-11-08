@@ -8,15 +8,25 @@
  * - DELETE /api/projects/:id
  */
 
-import { Project } from './types';
-import { getStoredProjects, setStoredProjects, getCurrentUserData, delay } from './storage';
+import { apiClient } from './api-client';
+import type {
+  Project,
+  CreateProjectRequest,
+  CreateProjectResponse,
+  GetProjectsResponse,
+  GetProjectResponse,
+} from './types';
 
 // ========================================
 // GET /api/projects
 // ========================================
 export const getProjects = async (): Promise<Project[]> => {
-  await delay(800);
-  return getStoredProjects();
+  const response = await apiClient.get<GetProjectsResponse>(
+    '/projects',
+    { requiresAuth: true }
+  );
+  
+  return response.projects;
 };
 
 // ========================================
@@ -27,66 +37,64 @@ export const createProject = async (
   githubUrl: string,
   template: Project['template']
 ): Promise<Project> => {
-  await delay(2000); // Deploy toma tiempo
-
-  const newProject: Project = {
-    id: Date.now().toString(),
+  const requestData: CreateProjectRequest = {
     name,
-    status: 'deploying',
-    url: `http://${name}.${getCurrentUserData()?.name || 'user'}.localhost`,
-    template,
     github_url: githubUrl,
-    created_at: new Date().toISOString(),
-    metrics: {
-      cpu: 0,
-      memory: 0,
-      requests: 0,
-    },
+    template,
   };
 
-  const projects = getStoredProjects();
-  const updatedProjects = [...projects, newProject];
-  setStoredProjects(updatedProjects);
+  const response = await apiClient.post<CreateProjectResponse>(
+    '/projects',
+    requestData,
+    { requiresAuth: true }
+  );
 
-  // Simular que después de unos segundos el deploy termina
-  setTimeout(() => {
-    updateProjectStatus(newProject.id, 'running');
-  }, 3000);
-
-  return newProject;
+  return response.project;
 };
 
 // ========================================
 // GET /api/projects/:id
 // ========================================
 export const getProject = async (id: string): Promise<Project | null> => {
-  await delay(500);
-
-  const projects = getStoredProjects();
-  return projects.find(p => p.id === id) || null;
+  try {
+    const response = await apiClient.get<GetProjectResponse>(
+      `/projects/${id}`,
+      { requiresAuth: true }
+    );
+    
+    return response.project;
+  } catch (error: any) {
+    // Si es 404, retornar null
+    if (error.statusCode === 404) {
+      return null;
+    }
+    throw error;
+  }
 };
 
 // ========================================
 // DELETE /api/projects/:id
 // ========================================
 export const deleteProject = async (id: string): Promise<void> => {
-  await delay(1000);
-
-  const projects = getStoredProjects();
-  const updatedProjects = projects.filter(p => p.id !== id);
-  setStoredProjects(updatedProjects);
+  await apiClient.delete(
+    `/projects/${id}`,
+    { requiresAuth: true }
+  );
 };
 
 // ========================================
+// PATCH /api/projects/:id/status
 // Helper para actualizar el estado de un proyecto
 // ========================================
-export const updateProjectStatus = (
+export const updateProjectStatus = async (
   id: string,
   status: Project['status']
-): void => {
-  const projects = getStoredProjects();
-  const updatedProjects = projects.map(p =>
-    p.id === id ? { ...p, status } : p
+): Promise<Project> => {
+  const response = await apiClient.patch<GetProjectResponse>(
+    `/projects/${id}/status`,
+    { status },
+    { requiresAuth: true }
   );
-  setStoredProjects(updatedProjects);
+  
+  return response.project;
 };

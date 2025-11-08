@@ -1,5 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, getCurrentUser, login as apiLogin, register as apiRegister, logout as apiLogout } from './api';
+import {
+  User,
+  login as apiLogin,
+  register as apiRegister,
+  logout as apiLogout,
+  getCurrentUser,
+  getCachedUser,
+  isAuthenticated,
+} from './api';
 
 interface AuthContextType {
   user: User | null;
@@ -16,21 +24,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Validar sesión al montar
   useEffect(() => {
-    // Check if user is already logged in
-    const currentUser = getCurrentUser();
-    setUser(currentUser);
-    setLoading(false);
+    const initAuth = async () => {
+      // Primero intentar con cache (inmediato, sin loading)
+      const cachedUser = getCachedUser();
+      if (cachedUser) {
+        setUser(cachedUser);
+      }
+
+      // Luego validar con el backend
+      if (isAuthenticated()) {
+        try {
+          const currentUser = await getCurrentUser();
+          setUser(currentUser);
+        } catch (error) {
+          // Si falla, limpiar usuario
+          setUser(null);
+        }
+      }
+      
+      setLoading(false);
+    };
+
+    initAuth();
+  }, []);
+
+  // Escuchar evento de unauthorized para auto-logout
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setUser(null);
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
-    const user = await apiLogin(email, password);
-    setUser(user);
+    const loggedInUser = await apiLogin(email, password);
+    setUser(loggedInUser);
   };
 
   const register = async (email: string, password: string, name: string) => {
-    const user = await apiRegister(email, password, name);
-    setUser(user);
+    const registeredUser = await apiRegister(email, password, name);
+    setUser(registeredUser);
   };
 
   const logout = async () => {

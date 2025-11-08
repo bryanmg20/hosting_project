@@ -1,7 +1,7 @@
 /**
  * SSE Context - Real-time Container Monitoring via Server-Sent Events
  * 
- * SSE CONNECTION (Mock Implementation):
+ * SSE CONNECTION:
  * - GET /api/containers/events → Stream de eventos de estado
  * 
  * FEATURES:
@@ -21,10 +21,16 @@
  * - connecting: 🔵 Conectando...
  * - connected: ✅ Conectado (actualizaciones automáticas)
  * - disconnected: 🔴 Desconectado
+ * 
+ * BACKEND IMPLEMENTATION:
+ * El backend debe implementar SSE endpoint que incluya Authorization header:
+ * - Aceptar token via query param: /api/containers/events?token={jwt}
+ * - O usar EventSource polyfill que soporte headers
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner@2.0.3';
+import { getAuthToken } from './api';
 
 export type ContainerStatus = 'running' | 'stopped' | 'deploying' | 'inactive' | 'error';
 
@@ -62,19 +68,56 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const eventSourceRef = useRef<EventSource | null>(null);
 
-  // Simular conexión SSE
+  // Conectar a SSE
   const connectSSE = useCallback(() => {
+    // Obtener token de autenticación
+    const token = getAuthToken();
+    if (!token) {
+      // Usuario no autenticado, no conectar SSE
+      setSseStatus('disconnected');
+      return () => {};
+    }
+
     setSseStatus('connecting');
-    
-    // Simular proceso de conexión
+
+    // IMPLEMENTACIÓN REAL (comentada por ahora, usar cuando backend esté listo):
+    // const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    // const eventSource = new EventSource(`${apiBaseUrl}/containers/events?token=${token}`);
+    // 
+    // eventSource.onopen = () => {
+    //   setSseStatus('connected');
+    //   toast.success('Conexión SSE establecida', {
+    //     description: 'Actualizaciones automáticas activadas',
+    //   });
+    // };
+    //
+    // eventSource.addEventListener('metrics_updated', (event) => {
+    //   const data = JSON.parse(event.data);
+    //   setContainerMetrics(prev => ({ ...prev, [data.projectId]: data.metrics }));
+    // });
+    //
+    // eventSource.addEventListener('container_status_changed', (event) => {
+    //   const data = JSON.parse(event.data);
+    //   setContainerStatus(prev => ({ ...prev, [data.projectId]: data.status }));
+    // });
+    //
+    // eventSource.onerror = () => {
+    //   setSseStatus('disconnected');
+    //   eventSource.close();
+    // };
+    //
+    // eventSourceRef.current = eventSource;
+    //
+    // return () => {
+    //   eventSource.close();
+    // };
+
+    // MOCK IMPLEMENTATION (eliminar cuando backend esté listo):
     const connectTimeout = setTimeout(() => {
       setSseStatus('connected');
-      toast.success('Conexión SSE establecida', {
+      toast.success('Conexión SSE establecida (mock)', {
         description: 'Actualizaciones automáticas activadas',
       });
-
-      // Simular EventSource (en producción sería: new EventSource('/api/containers/events'))
-      // Como es mock, usamos intervalos para simular eventos SSE
     }, 1500);
 
     return () => clearTimeout(connectTimeout);
@@ -82,8 +125,9 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Reconexión automática
   const handleReconnect = useCallback(() => {
-    if (sseStatus === 'disconnected') {
-      console.log('Intentando reconectar SSE...');
+    // Solo reconectar si hay token de autenticación
+    const token = getAuthToken();
+    if (sseStatus === 'disconnected' && token) {
       reconnectTimeoutRef.current = setTimeout(() => {
         connectSSE();
       }, 3000); // Reintentar después de 3 segundos

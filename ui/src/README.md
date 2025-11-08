@@ -4,7 +4,23 @@ Una plataforma completa de hosting basada en contenedores que permite a los usua
 
 ## 📋 Descripción del Proyecto
 
-Esta es una **aplicación frontend completa** construida con React, TypeScript y Tailwind CSS. Todos los datos son mockeados y se almacenan en localStorage para simular persistencia. La aplicación está diseñada para integrarse con un backend real mediante los endpoints documentados.
+Esta es una **aplicación frontend completa** construida con React, TypeScript y Tailwind CSS. 
+
+### ⚠️ Estado Actual
+
+**El sistema está PREPARADO para backend real con autenticación JWT.**
+
+- ✅ Sistema de tokens JWT implementado
+- ✅ API Client con headers Authorization automáticos
+- ✅ Manejo de errores 401 y auto-logout
+- ✅ Todos los endpoints preparados con fetch real
+- ✅ SSE listo para conexión real
+- 🔧 Backend mock incluido para testing (ver `BACKEND_EXAMPLES.md`)
+
+**Para usar con backend real:**
+1. Configurar `VITE_API_URL` en `.env`
+2. Implementar endpoints en backend (ver `MIGRATION_TO_BACKEND.md`)
+3. ¡Listo! El frontend ya está preparado.
 
 ## 🎨 Características Principales
 
@@ -89,65 +105,76 @@ Más de 40 componentes reutilizables incluyendo:
 - Y muchos más...
 
 ### Lógica de Negocio (`/lib/`)
-- **auth-context.tsx**: Contexto de autenticación
-- **mock-api.ts**: API mockeada con todos los endpoints
+- **auth-context.tsx**: Contexto de autenticación con JWT
+- **theme-context.tsx**: Gestión de tema dark/light
+- **sse-context.tsx**: Conexión SSE para real-time updates
+- **api/**: Módulos de API (auth, projects, containers, storage)
+  - `api-client.ts`: Cliente HTTP con autenticación automática
+  - `auth.ts`: Endpoints de autenticación
+  - `projects.ts`: Endpoints de proyectos
+  - `containers.ts`: Endpoints de contenedores
+  - `storage.ts`: Gestión de tokens en localStorage
+  - `types.ts`: Interfaces TypeScript
 
-## 🔌 Puntos de Conexión con Backend
+## 🔌 Backend Integration
 
-### Endpoints de Autenticación
+### 📖 Documentación Completa
 
-```typescript
-// POST /api/auth/register
-{
-  "email": "user@example.com",
-  "password": "securepassword",
-  "name": "John Doe"
-}
+- **`MIGRATION_TO_BACKEND.md`**: Guía completa de todos los endpoints esperados
+- **`BACKEND_EXAMPLES.md`**: Ejemplos de implementación con Express.js
+- **`ARCHITECTURE.md`**: Arquitectura técnica del sistema
 
-// POST /api/auth/login
-{
-  "email": "user@example.com",
-  "password": "securepassword"
-}
+### ⚡ Quick Start
 
-// POST /api/auth/logout
-// Headers: Authorization: Bearer JWT_TOKEN
+#### 1. Configurar Variables de Entorno
+
+```bash
+# .env
+VITE_API_URL=http://localhost:3000/api
 ```
 
-### Endpoints de Proyectos
+#### 2. Backend Debe Implementar
 
 ```typescript
-// GET /api/projects
-// Retorna lista de todos los proyectos del usuario
+// Autenticación (sin token)
+POST   /api/auth/register  → { user, token }
+POST   /api/auth/login     → { user, token }
 
-// GET /api/projects/:id
-// Retorna detalles de un proyecto específico
-
-// POST /api/projects
-{
-  "name": "my-project",
-  "github_url": "https://github.com/user/repo",
-  "template": "react" // "static" | "react" | "nodejs" | "flask"
-}
-
-// DELETE /api/projects/:id
-// Elimina un proyecto y su contenedor
+// Recursos (con token en Authorization header)
+GET    /api/auth/me
+POST   /api/auth/logout
+GET    /api/projects
+POST   /api/projects
+GET    /api/projects/:id
+DELETE /api/projects/:id
+PATCH  /api/projects/:id/status
+GET    /api/containers/:id/status
+POST   /api/containers/:id/start
+POST   /api/containers/:id/stop
+POST   /api/containers/:id/restart
+GET    /api/containers/events (SSE)
 ```
 
-### Endpoints de Contenedores
+#### 3. Sistema de Autenticación
 
+**Flujo:**
+1. Login → Backend genera JWT
+2. Frontend guarda en `localStorage['auth_token']`
+3. Todas las requests incluyen `Authorization: Bearer {token}`
+4. Backend valida token en cada request
+5. Si token expira → 401 → Frontend hace auto-logout
+
+**Estructura del Token:**
 ```typescript
-// GET /api/containers/:id/status
-// Retorna el estado actual del contenedor
-
-// POST /api/containers/:id/start
-// Inicia un contenedor detenido
-
-// POST /api/containers/:id/stop
-// Detiene un contenedor en ejecución
-
-// GET /api/containers/:id/logs?lines=100
-// Retorna logs del contenedor
+// Response de login/register
+{
+  "user": {
+    "id": "123",
+    "email": "user@example.com",
+    "name": "User Name"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
 ```
 
 ## 📊 Estructura de Datos
@@ -292,16 +319,27 @@ npm run dev
 
 ## 🔐 Consideraciones de Seguridad
 
-⚠️ **IMPORTANTE**: Esta es una demostración frontend. En producción:
+### Frontend (Implementado ✅)
 
-1. **No almacenar datos sensibles en localStorage**
-2. **Implementar validación y sanitización en backend**
-3. **Usar HTTPS para todas las comunicaciones**
-4. **Implementar rate limiting**
-5. **Validar tokens JWT en cada request**
-6. **Usar variables de entorno para configuración**
-7. **Implementar CORS apropiadamente**
-8. **No recolectar PII sin consentimiento explícito**
+- ✅ Solo guarda tokens JWT en localStorage (no contraseñas)
+- ✅ Auto-logout en token expirado (401)
+- ✅ Timeout de requests (30s por defecto)
+- ✅ Headers Authorization en todas las requests autenticadas
+- ✅ Validación de inputs en formularios
+
+### Backend (Por Implementar 🔧)
+
+⚠️ **IMPORTANTE**: El backend debe implementar:
+
+1. **JWT Validation**: Validar firma y expiración en cada request
+2. **HTTPS**: Solo producción con SSL/TLS
+3. **CORS**: Configurar origins permitidos
+4. **Rate Limiting**: Prevenir abuso de API
+5. **Input Validation**: Sanitizar y validar todos los inputs
+6. **Secrets Management**: Variables de entorno para JWT_SECRET
+7. **Password Hashing**: bcrypt con salt rounds >= 10
+8. **SQL Injection Prevention**: Usar ORMs o prepared statements
+9. **No PII Collection**: No recolectar datos personales sin consentimiento
 
 ## 📚 Tecnologías Utilizadas
 
@@ -340,18 +378,40 @@ Para más información sobre la integración con backend, consulta la página de
 - ✅ Error de deployment
 - ✅ Error de conexión
 
-## 🔄 Próximos Pasos (Sugerencias)
+## 🔄 Estado del Proyecto
 
-1. ✅ ~~**Implementar SSE**~~ para actualización en tiempo real de métricas (Completado)
-2. **Agregar historial de deployments** con rollback capability
-3. **Implementar variables de entorno** por proyecto
-4. **Agregar dominios personalizados**
-5. **Dashboard de billing y uso**
-6. **Integración con GitHub OAuth**
-7. **Notificaciones por email** de eventos importantes
-8. ✅ ~~**Logs en tiempo real**~~ con scroll infinito (Completado)
-9. ✅ ~~**Métricas avanzadas**~~ con gráficos históricos (Completado)
-10. **Team collaboration** y permisos
+### ✅ Completado
+
+- ✅ Sistema de autenticación completo (login/register/logout)
+- ✅ Dashboard con gestión de proyectos
+- ✅ Creación de proyectos con templates
+- ✅ Detalles de proyecto con métricas
+- ✅ Control de contenedores (start/stop/delete)
+- ✅ SSE para actualizaciones en tiempo real
+- ✅ Modo dark/light persistente
+- ✅ Diseño responsive mobile-first
+- ✅ **Migración completa a backend real con JWT** ⭐
+
+### 🔧 Pendiente (Backend)
+
+- [ ] Implementar endpoints en backend (ver `BACKEND_EXAMPLES.md`)
+- [ ] Configurar base de datos (PostgreSQL, MySQL, etc.)
+- [ ] Integración con Docker API
+- [ ] SSE endpoint para métricas en tiempo real
+- [ ] Deploy de backend
+
+### 💡 Features Futuras (Sugerencias)
+
+1. **Historial de deployments** con rollback capability
+2. **Variables de entorno** por proyecto
+3. **Dominios personalizados**
+4. **Dashboard de billing y uso**
+5. **GitHub OAuth** integration
+6. **Email notifications** de eventos importantes
+7. **Team collaboration** y permisos
+8. **CI/CD pipelines** configurables
+9. **Auto-scaling** de contenedores
+10. **Monitoring avanzado** con alertas
 
 ---
 

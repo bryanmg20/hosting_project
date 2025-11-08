@@ -5,12 +5,12 @@
  * - GET /api/containers/:id/status
  * - POST /api/containers/:id/start
  * - POST /api/containers/:id/stop
+ * - POST /api/containers/:id/restart
  * - GET /api/containers/events (SSE - implementado en sse-context.tsx)
  */
 
-import { Project } from './types';
-import { delay } from './storage';
-import { getProject, updateProjectStatus } from './projects';
+import { apiClient } from './api-client';
+import type { Project, ContainerStatusResponse } from './types';
 
 // ========================================
 // GET /api/containers/:id/status
@@ -18,24 +18,43 @@ import { getProject, updateProjectStatus } from './projects';
 export const getContainerStatus = async (
   id: string
 ): Promise<Project['status']> => {
-  await delay(400);
-
-  const project = await getProject(id);
-  return project?.status || 'stopped';
+  const response = await apiClient.get<ContainerStatusResponse>(
+    `/containers/${id}/status`,
+    { requiresAuth: true }
+  );
+  
+  return response.status;
 };
 
 // ========================================
 // POST /api/containers/:id/start
 // ========================================
 export const startContainer = async (id: string): Promise<void> => {
-  await delay(1500);
-  updateProjectStatus(id, 'running');
+  await apiClient.post(
+    `/containers/${id}/start`,
+    {},
+    { requiresAuth: true }
+  );
 };
 
 // ========================================
 // POST /api/containers/:id/stop
 // ========================================
 export const stopContainer = async (id: string): Promise<void> => {
-  await delay(1200);
-  updateProjectStatus(id, 'stopped');
+  await apiClient.post(
+    `/containers/${id}/stop`,
+    {},
+    { requiresAuth: true }
+  );
+};
+
+// ========================================
+// POST /api/containers/:id/restart
+// ========================================
+export const restartContainer = async (id: string): Promise<void> => {
+  await apiClient.post(
+    `/containers/${id}/restart`,
+    {},
+    { requiresAuth: true }
+  );
 };

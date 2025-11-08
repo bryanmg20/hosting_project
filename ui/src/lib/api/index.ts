@@ -4,10 +4,32 @@
  */
 
 // Types
-export type { Project, User } from './types';
+export type {
+  Project,
+  User,
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegisterResponse,
+  MeResponse,
+  CreateProjectRequest,
+  CreateProjectResponse,
+  GetProjectsResponse,
+  GetProjectResponse,
+  ContainerStatusResponse,
+  ApiError,
+  ApiConfig,
+} from './types';
 
 // Auth
-export { login, register, logout, getCurrentUser } from './auth';
+export {
+  login,
+  register,
+  logout,
+  getCurrentUser,
+  getCachedUser,
+  validateSession,
+} from './auth';
 
 // Projects
 export {
@@ -23,7 +45,26 @@ export {
   getContainerStatus,
   startContainer,
   stopContainer,
+  restartContainer,
 } from './containers';
 
-// Storage (por si se necesita acceso directo)
-export { STORAGE_KEYS } from './storage';
+// Storage helpers (por si se necesita acceso directo)
+export {
+  STORAGE_KEYS,
+  getAuthToken,
+  setAuthToken,
+  clearAuthTokens,
+  isAuthenticated,
+  getStoredTheme,
+  setStoredTheme,
+} from './storage';
+
+// API Client utilities
+export {
+  apiClient,
+  ApiClientError,
+  getApiBaseUrl,
+  isNetworkError,
+  isUnauthorizedError,
+  isServerError,
+} from './api-client';

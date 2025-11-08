@@ -8,34 +8,45 @@
  * - GET /api/auth/me
  */
 
-import { User } from './types';
-import { setCurrentUser, getCurrentUserData, delay } from './storage';
+import { apiClient } from './api-client';
+import {
+  setAuthToken,
+  setRefreshToken,
+  clearAuthTokens,
+  setCachedUserData,
+  getCachedUserData,
+} from './storage';
+import type {
+  User,
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegisterResponse,
+  MeResponse,
+} from './types';
 
 // ========================================
 // POST /api/auth/login
 // ========================================
 export const login = async (email: string, password: string): Promise<User> => {
-  await delay(1000); // Simula latencia de red
+  const requestData: LoginRequest = { email, password };
 
-  // Validación mock
-  if (!email || !password) {
-    throw new Error('Email y contraseña son requeridos');
+  const response = await apiClient.post<LoginResponse>(
+    '/auth/login',
+    requestData,
+    { requiresAuth: false } // Login no requiere token
+  );
+
+  // Guardar tokens
+  setAuthToken(response.token);
+  if (response.refresh_token) {
+    setRefreshToken(response.refresh_token);
   }
 
-  if (password.length < 6) {
-    throw new Error('Contraseña incorrecta');
-  }
+  // Guardar datos de usuario en cache (opcional)
+  setCachedUserData(response.user);
 
-  // Usuario mock
-  const user: User = {
-    id: '123',
-    email,
-    name: email.split('@')[0],
-  };
-
-  setCurrentUser(user);
-
-  return user;
+  return response.user;
 };
 
 // ========================================
@@ -46,38 +57,74 @@ export const register = async (
   password: string,
   name: string
 ): Promise<User> => {
-  await delay(1200);
+  const requestData: RegisterRequest = { email, password, name };
 
-  if (!email || !password || !name) {
-    throw new Error('Todos los campos son requeridos');
+  const response = await apiClient.post<RegisterResponse>(
+    '/auth/register',
+    requestData,
+    { requiresAuth: false } // Register no requiere token
+  );
+
+  // Guardar tokens
+  setAuthToken(response.token);
+  if (response.refresh_token) {
+    setRefreshToken(response.refresh_token);
   }
 
-  if (password.length < 6) {
-    throw new Error('La contraseña debe tener al menos 6 caracteres');
-  }
+  // Guardar datos de usuario en cache
+  setCachedUserData(response.user);
 
-  const user: User = {
-    id: Date.now().toString(),
-    email,
-    name,
-  };
-
-  setCurrentUser(user);
-
-  return user;
+  return response.user;
 };
 
 // ========================================
 // POST /api/auth/logout
 // ========================================
 export const logout = async (): Promise<void> => {
-  await delay(300);
-  setCurrentUser(null);
+  try {
+    // Intentar notificar al backend (opcional)
+    await apiClient.post('/auth/logout', {}, { requiresAuth: true });
+  } catch (error) {
+    // Ignorar errores de logout en backend
+    console.warn('Logout request failed, clearing local session anyway');
+  } finally {
+    // Siempre limpiar tokens locales
+    clearAuthTokens();
+  }
 };
 
 // ========================================
 // GET /api/auth/me
 // ========================================
-export const getCurrentUser = (): User | null => {
-  return getCurrentUserData();
+export const getCurrentUser = async (): Promise<User | null> => {
+  try {
+    const response = await apiClient.get<MeResponse>(
+      '/auth/me',
+      { requiresAuth: true }
+    );
+    
+    // Actualizar cache
+    setCachedUserData(response.user);
+    
+    return response.user;
+  } catch (error: any) {
+    // Si falla (401, network, etc.), retornar null
+    clearAuthTokens();
+    return null;
+  }
+};
+
+// ========================================
+// Helper: Obtener usuario del cache (sync)
+// ========================================
+export const getCachedUser = (): User | null => {
+  return getCachedUserData();
+};
+
+// ========================================
+// Helper: Validar sesión actual
+// ========================================
+export const validateSession = async (): Promise<boolean> => {
+  const user = await getCurrentUser();
+  return user !== null;
 };

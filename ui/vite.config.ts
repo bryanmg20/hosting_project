@@ -55,7 +55,6 @@
     },
     server: {
       port: 3000,
-      open: false,
-      allowedHost:true
+      open: true,
     },
   });
