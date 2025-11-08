@@ -25,3 +25,22 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+
+
+# Archivos compilados de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Archivos de configuración o entorno
+*.env
+instance/
+
+# Logs
+*.log
+
+# Archivos de caché o temporales
+*.tmp
+.cache/

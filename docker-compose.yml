@@ -1,4 +1,16 @@
 services:
+  gateway:
+    build: ./gateway
+    environment:
+      - FLASK_APP
+      - FLASK_ENV
+      - SECRET_KEY
+      - JWT_SECRET_KEY
+      - ROBLE_DB_NAME
+    volumes:
+      - ./gateway:/app
+    command: python app.py
+
   ui:
     build: ./ui
     volumes:
@@ -7,13 +19,21 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
     command: npx vite --host 0.0.0.0 --port 3000
+    depends_on:
+      - gateway
 
   caddy:
     image: caddy:alpine
     ports:
-      - "80:80"    # Redirección HTTP→HTTPS
-      - "443:443"  # HTTPS
+      - "80:80"
+      - "443:443"  
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data  # Para persistir certificados
+      - caddy_config:/config
     depends_on:
       - ui
+      - gateway
+volumes:
+  caddy_data:
+  caddy_config:
