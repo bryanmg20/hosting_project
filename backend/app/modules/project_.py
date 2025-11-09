@@ -263,7 +263,7 @@ def update_project_status(project_id):
         return jsonify({'error': 'Project not found'}), 404
     
     # Validar estados según Figma
-    valid_statuses = ['deploying', 'active', 'failed', 'deleting']
+    valid_statuses = ['deploying', 'stopped', 'running', 'error']
     if data['status'] not in valid_statuses:
         return jsonify({
             'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'

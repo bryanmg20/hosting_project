@@ -9,11 +9,11 @@ def create_app():
     app = Flask(__name__)
     
     # Configuración
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
-    app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-key')
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'Null')
+    app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'Null')
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
     app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
-    app.config['ROBLE_DB_NAME'] = os.environ.get('ROBLE_DB_NAME', 'tu_base_datos')
+    app.config['ROBLE_DB_NAME'] = os.environ.get('ROBLE_DB_NAME', 'Null')
     
     CORS(app, resources={r"/*": {"origins": "*"}})
     
@@ -34,9 +34,9 @@ def create_app():
         return {'error': 'Token has expired'}, 401
 
     # Registrar blueprints
-    from app.modules.auth.endpoints.auth_bp import auth_bp
-    from app.modules.project import project
+    from app.modules.endpoints.auth_bp import auth_bp
+    from app.modules.endpoints.project_routes import project_bp
     app.register_blueprint(auth_bp)
-    app.register_blueprint(project)
+    app.register_blueprint(project_bp)
     
     return app

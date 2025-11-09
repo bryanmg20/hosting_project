@@ -71,18 +71,22 @@ class AuthCoreService:
     def _get_user_data(self, email):
         """Obtiene datos del usuario de Roble"""
         user_data_result = self.user_service.get_user_data_with_retry(email)
+        from flask import current_app
+        import json
         
+        current_app.logger.info(f"User data result: {user_data_result}")
         user_name = "Usuario"
         containers = []
         
         if user_data_result['success']:
-            for user_row in user_data_result['data'].get('rows', []):
+            # ✅ CORRECCIÓN: user_data_result['data'] es la lista directa
+            for user_row in user_data_result['data']:  # ← Sin .get('rows')
                 if user_row.get('email') == email:
                     user_name = user_row.get('user', user_row.get('name', 'Usuario'))
-                    containers_str = user_row.get('containers', '[]')
-                    try:
-                        containers = json.loads(containers_str)
-                    except json.JSONDecodeError:
-                        containers = []
+                    
+                    # ✅ CORRECCIÓN: containers ya es una lista, no necesita json.loads
+                    containers = user_row.get('containers', [])  # ← Ya es lista
+                    
                     break
+                    
         return {'email': email, 'name': user_name, 'containers': containers}

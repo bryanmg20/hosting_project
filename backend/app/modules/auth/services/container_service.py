@@ -1,49 +1,48 @@
-from .base import BaseAuthService
+from .user_service import UserService
 
-class ContainerService(BaseAuthService):
+class ContainerService(UserService):
     def get_user_containers(self, email: str) -> dict:
         """Obtener todos los contenedores de un usuario"""
         try:
             import json
             
-            # Obtener token válido
+            # 1. Obtener token válido
             token_result = self.get_valid_access_token(email)
             if not token_result['success']:
                 return token_result
             
             access_token = token_result['access_token']
-
-            # Usar el método genérico _request
+            
+            # 2. Hacer request a Roble
             url = f"{self.database_url}/read?tableName=users&email={email}"
             response = self._request('GET', url, headers={'Authorization': f'Bearer {access_token}'})
-
-            if response['success']:
-                user_data = response['data']
-                if user_data and len(user_data) > 0:
-                    containers_data = user_data[0].get('containers', '[]')
-
-                    if isinstance(containers_data, str):
-                        try:
-                            containers = json.loads(containers_data)
-                        except json.JSONDecodeError:
-                            containers = []
-                    else:
-                        containers = containers_data
-
-                    if isinstance(containers, dict):
-                        containers = list(containers.values())
-                    elif not isinstance(containers, list):
+            
+            # 3. Procesar respuesta
+            if isinstance(response, list) and len(response) > 0:
+                user_data = response[0]  # Primer registro de la lista
+                containers_data = user_data.get('containers', '[]')
+                
+                # 4. Procesar containers data
+                if isinstance(containers_data, str):
+                    try:
+                        containers = json.loads(containers_data)
+                    except json.JSONDecodeError:
                         containers = []
-
-                    return {'success': True, 'containers': containers}
                 else:
-                    return {'success': True, 'containers': []}
+                    containers = containers_data
+                
+                # 5. Normalizar a lista
+                if isinstance(containers, dict):
+                    containers = list(containers.values())
+                elif not isinstance(containers, list):
+                    containers = []
+                
+                return {'success': True, 'containers': containers}
             else:
-                return {'success': False, 'error': response.get('error', 'Unknown error')}
+                return {'success': True, 'containers': []}
 
         except Exception as e:
             return {'success': False, 'error': str(e)}
-    
     def add_container_to_user(
     self,
     email: str,
@@ -95,13 +94,16 @@ class ContainerService(BaseAuthService):
 
             # 5. Usar el método genérico _request
             response = self._request('PUT', update_url, headers=headers, json=update_data)
-
-            if response['success']:
-                return {'success': True, 'data': response['data'], 'container': new_container}
+            from flask import current_app
+            if isinstance(response, dict) and response.get('_id'):
+                current_app.logger.info("exitoso")
+                return {'success': True, 'container': new_container}
             else:
+              
                 return {'success': False, 'error': response.get('error', 'Failed to update containers')}
 
         except Exception as e:
+            current_app.logger.info(response)
             return {'success': False, 'error': str(e)}
     
     def get_container_by_id(self, email: str, project_id: str) -> dict:
@@ -122,3 +124,4 @@ class ContainerService(BaseAuthService):
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
+container_service = ContainerService()
