@@ -51,4 +51,4 @@ class LoginService(BaseAuthService):
                 'error': str(e)
             }
     
-login_service = LoginService()
+login_service = LoginService() 

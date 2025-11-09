@@ -34,7 +34,7 @@ def create_app():
         return {'error': 'Token has expired'}, 401
 
     # Registrar blueprints
-    from app.modules.auth.routes import auth_bp
+    from app.modules.auth.endpoints.auth_bp import auth_bp
     from app.modules.project import project
     app.register_blueprint(auth_bp)
     app.register_blueprint(project)

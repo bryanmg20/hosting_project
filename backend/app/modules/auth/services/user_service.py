@@ -125,6 +125,4 @@ class UserService(BaseAuthService):
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
-
-
-user_service = UserService()
+user_service = UserService() 

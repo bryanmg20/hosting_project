@@ -6,10 +6,10 @@ from flask_jwt_extended import (
 )
 import json
 
-from app.modules.auth.login_service import login_service
-from app.modules.auth.user_service import user_service
+from backend.app.modules.auth.services.login_service import login_service
+from backend.app.modules.auth.services.user_service import user_service
 # Crear Blueprint
-auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+authh_bp = Blueprint('authh', __name__, url_prefix='/authh')
 
 # Utilidad para validar email
 def validate_email(email):
@@ -20,7 +20,7 @@ def validate_email(email):
 # ========================================
 # POST /api/auth/register
 # ========================================
-@auth_bp.route('/register', methods=['POST'])
+@authh_bp.route('/register', methods=['POST'])
 def register():
     try:
         data = request.get_json()
@@ -94,7 +94,7 @@ def register():
 # ========================================
 # POST /api/auth/login
 # ========================================
-@auth_bp.route('/login', methods=['POST'])
+@authh_bp.route('/login', methods=['POST'])
 def login():
     try:
         data = request.get_json()
@@ -162,7 +162,7 @@ def login():
 # ========================================
 # GET /api/auth/me
 # ========================================
-@auth_bp.route('/me', methods=['GET'])
+@authh_bp.route('/me', methods=['GET'])
 @jwt_required()
 def get_current_user():
     try:
@@ -200,7 +200,7 @@ def get_current_user():
 # ========================================
 # POST /api/auth/logout
 # ========================================
-@auth_bp.route('/logout', methods=['POST'])
+@authh_bp.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
     try:

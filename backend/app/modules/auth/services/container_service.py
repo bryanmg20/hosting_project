@@ -122,5 +122,3 @@ class ContainerService(BaseAuthService):
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
-
-container_service = ContainerService()

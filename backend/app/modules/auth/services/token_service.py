@@ -88,5 +88,3 @@ class TokenService(BaseAuthService):
 
         except Exception as e:
             return {'success': False, 'error': str(e)}
-
-token_service = TokenService()
