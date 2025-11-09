@@ -205,65 +205,28 @@ def create_project():
 @project.route('/projects/<project_id>', methods=['GET'])
 @jwt_required()
 def get_project(project_id):
-    """
-    Obtener un proyecto específico por ID
-    """
-    try:
-        from flask import current_app
-        current_app.logger.info(f"🎯 GET /projects/{project_id}")
-        
-        # Obtener email del usuario autenticado
-        user_email = get_jwt_identity()
-        current_app.logger.info(f"🔐 User: {user_email}")
-        
-        if not user_email:
-            return jsonify({'error': 'User not authenticated'}), 401
-        
-        # Obtener todos los contenedores del usuario
-        containers_result = roble_auth.get_user_containers(user_email)
-        
-        if not containers_result['success']:
-            return jsonify({
-                'error': f'Failed to fetch projects: {containers_result.get("error", "Unknown error")}'
-            }), 500
-        
-        containers = containers_result['containers']
-        current_app.logger.info(f"📚 Total containers found: {len(containers)}")
-        
-        # Buscar el proyecto específico
-        project_found = None
-        for container in containers:
-            if container.get('id') == project_id:
-                project_found = container
-                break
-        
-        if not project_found:
-            current_app.logger.error(f"❌ Project not found: {project_id}")
-            return jsonify({'error': 'Project not found'}), 404
-        
-        # Crear respuesta con estructura de Figma (incluyendo status y metrics)
-        project_response = {
-            'id': project_found['id'],
-            'name': project_found['name'],
-            'status': 'running',  # Puedes determinar esto dinámicamente
-            'url': project_found['url'],
-            'template': project_found['template'],
-            'github_url': project_found['github_url'],
-            'created_at': project_found['created_at'],
-            'metrics': {
-                'cpu': 0,
-                'memory': 0,
-                'requests': 0
-            }
-        }
-        
-        current_app.logger.info(f"✅ Project found: {project_id}")
-        return jsonify({'project': project_response}), 200
-        
-    except Exception as e:
-        current_app.logger.error(f"💥 Error in get_project: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
-
+    user_email = get_jwt_identity()
+    
+    # Usa la función específica que ya existe
+    result = roble_auth.get_container_by_id(user_email, project_id)
+    
+    if not result['success']:
+        return jsonify({'error': result.get('error', 'Project not found')}), 404
+    
+    # Convertir a estructura Figma
+    container = result['container']
+    project_response = {
+        'id': container['id'],
+        'name': container['name'],
+        'status': 'running',
+        'url': container['url'],
+        'template': container['template'],
+        'github_url': container['github_url'],
+        'created_at': container['created_at'],
+        'metrics': {'cpu': 0, 'memory': 0, 'requests': 0}
+    }
+    
+    return jsonify({'project': project_response}), 200
 # ========================================
 # DELETE /api/projects/:id
 # ========================================

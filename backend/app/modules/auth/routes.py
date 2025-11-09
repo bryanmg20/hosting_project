@@ -4,7 +4,6 @@ from flask_jwt_extended import (
     create_access_token, create_refresh_token,
     jwt_required, get_jwt_identity, get_jwt
 )
-from datetime import datetime
 import json
 
 from app.modules.auth.service import roble_auth
@@ -71,7 +70,7 @@ def register():
             # Continuamos aunque falle la creación en la tabla
             pass
         
-        # 5. Generar nuestros tokens JWT
+        # 5. Generar tokens JWT
         additional_claims = {'name': name, 'email': email}
         access_token = create_access_token(identity=email, additional_claims=additional_claims)
         refresh_token = create_refresh_token(identity=email, additional_claims=additional_claims)
@@ -122,10 +121,7 @@ def login():
         
         # 3. Obtener datos del usuario con manejo de token expirado
         user_data_result = roble_auth.get_user_data_with_retry(email)
-        from flask import current_app
-        current_app.logger.info("=== USER_DATA_RESULT ===")
-        current_app.logger.info(f"user_data_result: {user_data_result}")
-        current_app.logger.info("=== END USER_DATA_RESULT ===")
+       
         
         user_name = "Usuario"
         containers = []
@@ -141,7 +137,7 @@ def login():
                         containers = []
                     break
         
-        # 4. Generar nuestros tokens JWT
+        # 4. Generar tokens JWT
         additional_claims = {'name': user_name, 'email': email}
         access_token = create_access_token(identity=email, additional_claims=additional_claims)
         refresh_token = create_refresh_token(identity=email, additional_claims=additional_claims)

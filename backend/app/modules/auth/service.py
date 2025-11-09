@@ -1,9 +1,8 @@
 # app/modules/auth/service.py
 import requests
 import os
-import json
 import time
-import datetime
+
 
 class RobleAuthService:
     def __init__(self, roble_db_name=None):
@@ -22,6 +21,7 @@ class RobleAuthService:
             })
             
             if response.status_code == 200 or response.status_code == 201:
+
                 data = response.json()
                 return {
                     'success': True, 
@@ -64,7 +64,7 @@ class RobleAuthService:
         """Registro directo sin verificación de email"""
         try:
             url = f"{self.auth_url}/{self.db_name}/signup-direct"
-            print(f"🔗 URL de Roble: {url}")
+        
             
             response = requests.post(url, json={
                 'email': email,
@@ -72,21 +72,17 @@ class RobleAuthService:
                 'name': name
             })
             
-            print(f"📡 Response Status: {response.status_code}")
-            print(f"📡 Response Text: {response.text}")
             
             if response.status_code == 200 or response.status_code == 201:
                 return {'success': True, 'data': response.json()}
             else:
-                # Incluir el response.text en el error para ver el mensaje real de Roble
                 return {
                     'success': False, 
                     'error': 'Registration failed',
                     'status_code': response.status_code,
-                    'details': response.text  # ← Esto tiene el error específico
+                    'details': response.text
                 }
         except Exception as e:
-            print(f"💥 Exception: {str(e)}")
             return {'success': False, 'error': str(e)}
     
     def verify_token(self, token: str) -> dict:
@@ -97,92 +93,100 @@ class RobleAuthService:
             response = requests.get(url, headers=headers)
             
             return {
-                'success': response.status_code == 201,
-                'valid': response.status_code == 201
+                'success': response.status_code == 200,
+                'valid': response.status_code == 200
             }
         except Exception as e:
             return {'success': False, 'error': str(e)}
     
-    def get_user_data_with_retry(self, email: str, max_retries: int = 2) -> dict:
-        """Obtener datos del usuario con reintentos si el token expira"""
-        from flask import current_app
-        
-        current_app.logger.info(f"=== get_user_data_with_retry called for email: {email} ===")
-        
-        user_tokens = self.tokens_store.get(email, {})
-        access_token = user_tokens.get('access_token')
-        refresh_token = user_tokens.get('refresh_token')
-        
-        if not access_token:
-            return {'success': False, 'error': 'No tokens available'}
-        
-        for attempt in range(max_retries):
-            try:
-                current_app.logger.info(f"Attempt {attempt + 1}")
+    def get_valid_access_token(self, email: str) -> dict:
+        """
+        Obtener un access token válido para el usuario.
+        Si el token actual expiró, hace refresh automáticamente.
+        """
+        try:
+            
+            user_tokens = self.get_roble_tokens(email)
+            access_token = user_tokens.get('access_token')
+            refresh_token = user_tokens.get('refresh_token')
+            
+            if not access_token or not refresh_token:
                 
-                verify_result = self.verify_token(access_token)
-                current_app.logger.info(f"Token valid: {verify_result['valid']}")
+                return {'success': False, 'error': 'No tokens available'}
+            
+            # Verificar si el token actual es válido
+            verify_result = self.verify_token(access_token)
+            
+            if verify_result.get('valid'):
                 
-                if not verify_result['valid'] and attempt == 0 and refresh_token:
-                    current_app.logger.info("Refreshing token...")
-                    refresh_result = self.refresh_token(refresh_token)
-                    if refresh_result['success']:
-                        access_token = refresh_result['access_token']
-                        self.tokens_store[email] = {
-                            'access_token': access_token,
-                            'refresh_token': refresh_token
-                        }
-                        current_app.logger.info("Token refreshed successfully")
-                    else:
-                        current_app.logger.info("Token refresh failed")
-                        return {'success': False, 'error': 'Token refresh failed'}
-                
-                # CORRECCIÓN: Usar el endpoint correcto según la documentación
-                url = f"{self.database_url}/read?tableName=users&email={email}"
-                headers = {'Authorization': f'Bearer {access_token}'}
-                
-                current_app.logger.info(f"Making request to: {url}")
-                
-                response = requests.get(url, headers=headers)
-                
-                current_app.logger.info(f"Response status: {response.status_code}")
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    current_app.logger.info(f"Request successful. Data: {data}")
-                    return {'success': True, 'data': {'rows': data}}  # Adaptar a la estructura esperada
-                elif response.status_code == 401 and attempt == 0 and refresh_token:
-                    current_app.logger.info("401 Unauthorized, will retry...")
-                    continue
-                else:
-                    current_app.logger.info(f"Failed with status {response.status_code}")
-                    current_app.logger.info(f"Response text: {response.text}")
-                    return {
-                        'success': False, 
-                        'error': f'Failed to fetch user data: {response.status_code}',
-                        'response_text': response.text
-                    }
-                    
-            except Exception as e:
-                current_app.logger.info(f"Exception: {str(e)}")
-                if attempt == max_retries - 1:
-                    return {'success': False, 'error': str(e)}
-        
-        return {'success': False, 'error': 'Max retries exceeded'}
+                return {'success': True, 'access_token': access_token}
+            
+            # Si no es válido, hacer refresh
+           
+            refresh_result = self.refresh_token(refresh_token)
     
-    def create_user_in_table(self, access_token: str, user_data: dict) -> dict:
+            
+            if refresh_result['success']:
+                new_access_token = refresh_result['access_token']
+                # Actualizar en el storage
+
+
+                self.store_roble_tokens(email, new_access_token, refresh_token)
+               
+                return {'success': True, 'access_token': new_access_token}
+            else:
+               
+                return {'success': False, 'error': 'Token refresh failed'}
+                
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def get_user_data_with_retry(self, email: str, max_retries: int = 2) -> dict:
+        """Obtener datos del usuario usando token válido"""
+        try:
+            # Obtener token válido
+            token_result = self.get_valid_access_token(email)
+            if not token_result['success']:
+                return token_result
+            
+            access_token = token_result['access_token']
+            
+            # Hacer la request
+            url = f"{self.database_url}/read?tableName=users&email={email}"
+            headers = {'Authorization': f'Bearer {access_token}'}
+            
+            response = requests.get(url, headers=headers)
+            
+            if response.status_code == 200 or  response.status_code == 201:
+                data = response.json()
+                return {'success': True, 'data': {'rows': data}}
+            else:
+                return {
+                    'success': False, 
+                    'error': f'Failed to fetch user data: {response.status_code}',
+                    'response_text': response.text
+                }
+                        
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def create_user_in_table(self, email: str, user_data: dict) -> dict:
         """Crear usuario en la tabla users de Roble"""
         try:
+            # Obtener token válido
+            token_result = self.get_valid_access_token(email)
+            if not token_result['success']:
+                return token_result
+            
+            access_token = token_result['access_token']
+            
             url = f"{self.database_url}/insert"
             headers = {'Authorization': f'Bearer {access_token}'}
             
             response = requests.post(url, headers=headers, json={
                 'tableName': 'users',
-                'records': [user_data]  # ← 'records' en array, no 'data'
+                'records': [user_data]
             })
-            
-            print(f"🔗 Insert URL: {url}")
-            print(f"📡 Insert Response: {response.status_code} - {response.text}")
             
             if response.status_code in [200, 201]:
                 return {'success': True, 'data': response.json()}
@@ -211,22 +215,67 @@ class RobleAuthService:
         """Limpiar tokens de un usuario"""
         if email in self.tokens_store:
             del self.tokens_store[email]
-
-     
+    
+    def get_user_containers(self, email: str) -> dict:
+        """Obtener todos los contenedores de un usuario"""
+        try:
+            import json
+            
+            # Obtener token válido
+            token_result = self.get_valid_access_token(email)
+            if not token_result['success']:
+                return token_result
+            
+            access_token = token_result['access_token']
+            
+            # Hacer la request
+            url = f"{self.database_url}/read?tableName=users&email={email}"
+            headers = {'Authorization': f'Bearer {access_token}'}
+            
+            response = requests.get(url, headers=headers)
+            
+            if response.status_code == 200:
+                user_data = response.json()
+                if user_data and len(user_data) > 0:
+                    containers_data = user_data[0].get('containers', '[]')
+                    
+                    # Manejar JSON string
+                    if isinstance(containers_data, str):
+                        try:
+                            containers = json.loads(containers_data)
+                        except json.JSONDecodeError:
+                            containers = []
+                    else:
+                        containers = containers_data
+                    
+                    # Normalizar a lista
+                    if isinstance(containers, dict):
+                        containers = list(containers.values())
+                    elif not isinstance(containers, list):
+                        containers = []
+                    
+                    return {'success': True, 'containers': containers}
+                else:
+                    return {'success': True, 'containers': []}
+            else:
+                return {'success': False, 'error': f'Failed to fetch containers: {response.status_code}'}
+                
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
     def add_container_to_user(self, email: str, project_id: str, name: str, url: str, template: str, github_url: str, created: str) -> dict:
         """Agregar un contenedor a la columna containers del usuario"""
         try:
-            from flask import current_app
             import json
             
-            # 1. Obtener tokens
-            user_tokens = self.get_roble_tokens(email)
-            access_token = user_tokens.get('access_token')
+            # Obtener token válido
+            token_result = self.get_valid_access_token(email)
+            if not token_result['success']:
+                return token_result
             
-            if not access_token:
-                return {'success': False, 'error': 'No access token available'}
+            access_token = token_result['access_token']
             
-            # 2. Crear nuevo contenedor
+            # 1. Crear nuevo contenedor
             new_container = {
                 'id': project_id,
                 'name': name,
@@ -236,83 +285,36 @@ class RobleAuthService:
                 'created_at': created
             }
             
-            # 3. Obtener containers existentes
-            url_read = f"{self.database_url}/read?tableName=users&email={email}"
-            headers = {'Authorization': f'Bearer {access_token}'}
+            # 2. Obtener containers existentes
+            containers_result = self.get_user_containers(email)
+            if not containers_result['success']:
+                return containers_result
             
-            response = requests.get(url_read, headers=headers)
-            
-            if response.status_code != 200:
-                return {'success': False, 'error': f'Failed to fetch user data: {response.status_code}'}
-            
-            user_data = response.json()
-            if not user_data:
-                return {'success': False, 'error': 'User not found'}
-            
-            current_user = user_data[0]
-            existing_containers = current_user.get('containers', [])
-            
-            # Normalizar a lista
-            if isinstance(existing_containers, dict):
-                existing_containers = list(existing_containers.values())
-            elif not isinstance(existing_containers, list):
-                existing_containers = []
-            
-            # Agregar nuevo contenedor
+            existing_containers = containers_result['containers']
             existing_containers.append(new_container)
-            
-            # Serializar el array a JSON string
             containers_json = json.dumps(existing_containers)
             
-            # 4. Actualizar con UPDATE
+            # 3. Hacer el update
             update_url = f"{self.database_url}/update"
+            headers = {'Authorization': f'Bearer {access_token}'}
             update_data = {
                 'tableName': 'users',
                 'idColumn': 'email',
                 'idValue': email,
-                'updates': {
-                    'containers': containers_json
-                }
+                'updates': {'containers': containers_json}
             }
             
-            update_response = requests.put(update_url, headers=headers, json=update_data)
+            response = requests.put(update_url, headers=headers, json=update_data)
             
-            if update_response.status_code in [200, 201]:
-                return {'success': True, 'data': update_response.json(), 'container': new_container}
+            if response.status_code in [200, 201]:
+                return {'success': True, 'data': response.json(), 'container': new_container}
             else:
                 return {
                     'success': False,
-                    'error': f'Failed to update containers: {update_response.status_code}',
-                    'details': update_response.text
+                    'error': f'Failed to update containers: {response.status_code}',
+                    'details': response.text
                 }
                     
-        except Exception as e:
-            return {'success': False, 'error': str(e)}
-        
-    def get_user_containers(self, email: str) -> dict:
-        """Obtener todos los contenedores de un usuario"""
-        try:
-            user_tokens = self.get_roble_tokens(email)
-            access_token = user_tokens.get('access_token')
-            
-            if not access_token:
-                return {'success': False, 'error': 'No access token available'}
-            
-            url = f"{self.database_url}/read?tableName=users&email={email}"
-            headers = {'Authorization': f'Bearer {access_token}'}
-            
-            response = requests.get(url, headers=headers)
-            
-            if response.status_code == 200:
-                user_data = response.json()
-                if user_data and len(user_data) > 0:
-                    containers = user_data[0].get('containers', [])
-                    return {'success': True, 'containers': containers}
-                else:
-                    return {'success': True, 'containers': []}
-            else:
-                return {'success': False, 'error': f'Failed to fetch containers: {response.status_code}'}
-                
         except Exception as e:
             return {'success': False, 'error': str(e)}
     
