@@ -123,5 +123,37 @@ class ContainerService(UserService):
                 
         except Exception as e:
             return {'success': False, 'error': str(e)}
+        
+    def update_user_containers(self, email: str, containers: list) -> dict:
+        """Actualiza la lista completa de contenedores del usuario"""
+        try:
+            import json
+            
+            token_result = self.get_valid_access_token(email)
+            if not token_result['success']:
+                return token_result
+
+            access_token = token_result['access_token']
+
+            update_url = f"{self.database_url}/update"
+            headers = {'Authorization': f'Bearer {access_token}'}
+            update_data = {
+                'tableName': 'users',
+                'idColumn': 'email', 
+                'idValue': email,
+                'updates': {'containers': json.dumps(containers)}
+            }
+
+            response = self._request('PUT', update_url, headers=headers, json=update_data)
+
+            if isinstance(response, dict) and response.get('_id'):
+                return {'success': True, 'data': response}
+            elif isinstance(response, list) and len(response) > 0:
+                return {'success': True, 'data': response[0]}
+            else:
+                return {'success': False, 'error': 'Failed to update containers'}
+
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
 
 container_service = ContainerService()

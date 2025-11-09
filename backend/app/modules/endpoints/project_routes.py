@@ -99,3 +99,38 @@ def get_project(project_id):
         return error_response('Internal server error', 500)
 
 # Los endpoints DELETE y PATCH los mantienes similares
+
+@project_bp.route('/projects/<project_id>', methods=['DELETE'])
+@jwt_required()
+def delete_project(project_id):
+    """
+    Eliminar un proyecto específico del usuario
+    """
+    try:
+        user_email = get_jwt_identity()
+        
+        if not user_email:
+            return error_response('User not authenticated', 401)
+        
+        # 1. Verificar que el proyecto existe y pertenece al usuario
+        project_result = container_service.get_container_by_id(user_email, project_id)
+        if not project_result['success']:
+            return error_response('Project not found', 404)
+        
+        # 2. Obtener todos los contenedores y filtrar el que se elimina
+        containers_result = container_service.get_user_containers(user_email)
+        if not containers_result['success']:
+            return error_response('Failed to fetch user projects', 500)
+        
+        containers = containers_result.get('containers', [])
+        updated_containers = [container for container in containers if container.get('id') != project_id]
+        
+        # 3. Actualizar la lista de contenedores en Roble
+        update_result = container_service.update_user_containers(user_email, updated_containers)
+        if not update_result['success']:
+            return error_response(f'Failed to delete project: {update_result.get("error")}', 500)
+        
+        return success_response(None, 'Project deleted successfully', 200)
+        
+    except Exception as e:
+        return error_response('Internal server error', 500)
