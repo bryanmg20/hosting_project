@@ -62,7 +62,6 @@ def register():
         user_table_data = {
             'user': name,
             'email': email,
-            'password': password,
             'containers': [],
         }
         
@@ -123,6 +122,10 @@ def login():
         
         # 3. Obtener datos del usuario con manejo de token expirado
         user_data_result = roble_auth.get_user_data_with_retry(email)
+        from flask import current_app
+        current_app.logger.info("=== USER_DATA_RESULT ===")
+        current_app.logger.info(f"user_data_result: {user_data_result}")
+        current_app.logger.info("=== END USER_DATA_RESULT ===")
         
         user_name = "Usuario"
         containers = []

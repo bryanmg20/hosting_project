@@ -11,7 +11,7 @@ export interface Project {
   name: string;
   status: 'running' | 'stopped' | 'deploying' | 'error';
   url: string;
-  template: 'static' | 'react' | 'flask' | 'nodejs';
+  template: 'static' | 'react' | 'flask';
   github_url: string;
   created_at: string;
   metrics: {

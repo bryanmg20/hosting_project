@@ -415,7 +415,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
-                  <div className={`w-3 h-3 rounded-full ${status.dotColor} animate-pulse`} />
+                  <div className={`w-3 h-3 rounded-full ${status.dotColor || 'bg-gray-500'} animate-pulse`} />
                   <div className="flex-1">
                     <p>Container is {status.label.toLowerCase()}</p>
                     <p className="text-muted-foreground">

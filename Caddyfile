@@ -11,5 +11,5 @@ ui.localhost {
 }
 
 api.localhost {
-    reverse_proxy gateway:5000
+    reverse_proxy backend:5000
 }

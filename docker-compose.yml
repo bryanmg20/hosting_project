@@ -1,6 +1,6 @@
 services:
-  gateway:
-    build: ./gateway
+  backend:
+    build: ./backend
     environment:
       - FLASK_APP
       - FLASK_ENV
@@ -8,7 +8,7 @@ services:
       - JWT_SECRET_KEY
       - ROBLE_DB_NAME
     volumes:
-      - ./gateway:/app
+      - ./backend:/app
     command: python app.py
 
   ui:
@@ -20,7 +20,7 @@ services:
       - CHOKIDAR_USEPOLLING=true
     command: npx vite --host 0.0.0.0 --port 3000
     depends_on:
-      - gateway
+      - backend
 
   caddy:
     image: caddy:alpine
@@ -33,7 +33,7 @@ services:
       - caddy_config:/config
     depends_on:
       - ui
-      - gateway
+      - backend
 volumes:
   caddy_data:
   caddy_config:
