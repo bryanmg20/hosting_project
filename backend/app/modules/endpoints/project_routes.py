@@ -1,6 +1,6 @@
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-
+import datetime
 from app.modules.auth.services.container_service import container_service
 from app.modules.project.validators import validate_create_project_data, validate_project_status
 from app.modules.project.project_logic import format_project_list, format_project_response, create_new_project_data
@@ -131,6 +131,60 @@ def delete_project(project_id):
             return error_response(f'Failed to delete project: {update_result.get("error")}', 500)
         
         return success_response(None, 'Project deleted successfully', 200)
+        
+    except Exception as e:
+        return error_response('Internal server error', 500)
+    
+
+#mock status project
+
+@project_bp.route('/projects/<project_id>/status', methods=['PATCH'])
+@jwt_required()
+def update_project_status(project_id):
+    """
+    Actualizar el estado de un proyecto específico
+    Mock endpoint - siempre devuelve éxito con el estado actualizado
+    """
+    try:
+        user_email = get_jwt_identity()
+        
+        if not user_email:
+            return error_response('User not authenticated', 401)
+        
+        # 1. Obtener datos de la petición
+        request_data = request.get_json()
+        if not request_data or 'status' not in request_data:
+            return error_response('Status is required', 400)
+        
+        new_status = request_data['status']
+        
+        # 2. Validar que el estado sea permitido
+        valid_statuses = ['stopped', 'deploying', 'running', 'error']
+        if new_status not in valid_statuses:
+            return error_response(f'Invalid status. Must be one of: {valid_statuses}', 400)
+        
+        # 3. Verificar que el proyecto existe y pertenece al usuario
+        project_result = container_service.get_container_by_id(user_email, project_id)
+        if not project_result['success']:
+            return error_response('Project not found', 404)
+        
+        # 4. MOCK: Simular actualización exitosa
+        # En una implementación real, aquí actualizarías la base de datos
+        current_project = project_result['container']
+        
+        # Crear respuesta mock con el proyecto actualizado
+        updated_project = {
+            **current_project,
+            'status': new_status,
+            'updated_at': datetime.utcnow().isoformat() + 'Z'
+        }
+        
+        # 5. Retornar respuesta mock exitosa
+        return success_response(
+            data={'project': updated_project},
+            message=f'Project status updated to {new_status}',
+            status_code=200
+        )
         
     except Exception as e:
         return error_response('Internal server error', 500)

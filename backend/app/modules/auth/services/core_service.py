@@ -71,10 +71,6 @@ class AuthCoreService:
     def _get_user_data(self, email):
         """Obtiene datos del usuario de Roble"""
         user_data_result = self.user_service.get_user_data_with_retry(email)
-        from flask import current_app
-        import json
-        
-        current_app.logger.info(f"User data result: {user_data_result}")
         user_name = "Usuario"
         containers = []
         

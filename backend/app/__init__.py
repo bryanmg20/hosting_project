@@ -36,7 +36,9 @@ def create_app():
     # Registrar blueprints
     from app.modules.endpoints.auth_bp import auth_bp
     from app.modules.endpoints.project_routes import project_bp
+    from app.modules.endpoints.container_routes import container_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(project_bp)
+    app.register_blueprint(container_bp)
     
     return app
