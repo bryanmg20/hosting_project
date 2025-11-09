@@ -6,8 +6,8 @@ from flask_jwt_extended import (
 )
 import json
 
-from app.modules.auth.service import roble_auth
-
+from app.modules.auth.login_service import login_service
+from app.modules.auth.user_service import user_service
 # Crear Blueprint
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -39,14 +39,14 @@ def register():
             return jsonify({'error': 'Password must be at least 6 characters long'}), 400
 
         # 1. Registrar usuario en Roble Auth
-        signup_result = roble_auth.signup_direct(email, password, name)
+        signup_result = login_service.signup_direct(email, password, name)
         
         if not signup_result['success']:
             error_msg = signup_result.get('error', 'Registration failed')
             return jsonify({'error': error_msg}), 400
         
         # 2. Hacer login para obtener tokens de Roble
-        login_result = roble_auth.login(email, password)
+        login_result = login_service.login(email, password)
         
         if not login_result['success']:
             return jsonify({'error': 'Registration successful but login failed'}), 400
@@ -55,7 +55,7 @@ def register():
         roble_refresh_token = login_result['refresh_token']
         
         # 3. Almacenar tokens de Roble
-        roble_auth.store_roble_tokens(email, roble_access_token, roble_refresh_token)
+        user_service.store_roble_tokens(email, roble_access_token, roble_refresh_token)
         
         # 4. Crear usuario en tabla users
         user_table_data = {
@@ -64,12 +64,13 @@ def register():
             'containers': [],
         }
         
-        table_result = roble_auth.create_user_in_table(roble_access_token, user_table_data)
+        table_result = user_service.create_user_in_table(roble_access_token, user_table_data)
         
-        if not table_result['success']:
-            # Continuamos aunque falle la creación en la tabla
-            pass
+        if table_result['success']:
+            return jsonify({'error': 'Registration successful but login'}), 400
         
+
+
         # 5. Generar tokens JWT
         additional_claims = {'name': name, 'email': email}
         access_token = create_access_token(identity=email, additional_claims=additional_claims)
@@ -108,7 +109,7 @@ def login():
             return jsonify({'error': 'Email and password are required'}), 400
         
         # 1. Login con Roble Auth
-        login_result = roble_auth.login(email, password)
+        login_result = login_service.login(email, password)
         
         if not login_result['success']:
             return jsonify({'error': 'Invalid email or password'}), 401
@@ -117,10 +118,10 @@ def login():
         roble_refresh_token = login_result['refresh_token']
         
         # 2. Almacenar tokens de Roble
-        roble_auth.store_roble_tokens(email, roble_access_token, roble_refresh_token)
+        user_service.store_roble_tokens(email, roble_access_token, roble_refresh_token)
         
         # 3. Obtener datos del usuario con manejo de token expirado
-        user_data_result = roble_auth.get_user_data_with_retry(email)
+        user_data_result = user_service.get_user_data_with_retry(email)
        
         
         user_name = "Usuario"
@@ -172,7 +173,7 @@ def get_current_user():
         containers = []
         
         # Obtener datos actualizados de Roble con manejo de token
-        user_data_result = roble_auth.get_user_data_with_retry(user_email)
+        user_data_result = user_service.get_user_data_with_retry(user_email)
         
         if user_data_result['success']:
             for user_row in user_data_result['data'].get('rows', []):
@@ -206,7 +207,7 @@ def logout():
         user_email = get_jwt_identity()
         
         # Limpiar tokens de Roble almacenados
-        roble_auth.clear_user_tokens(user_email)
+        user_service.clear_user_tokens(user_email)
         
         return jsonify({'message': 'Successfully logged out'}), 200
     except Exception as e:
