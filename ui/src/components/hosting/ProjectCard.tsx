@@ -5,7 +5,7 @@ import { Button } from '../ui/button';
 import { ExternalLink, Play, Square, Trash2, Activity } from 'lucide-react';
 import { Project } from '../../lib/api';
 import { LiveStatusBadge } from './LiveStatusBadge';
-import { ContainerStatus } from '../../lib/sse-context';
+import { ContainerStatus, useSSE } from '../../lib/sse-context';
 
 interface ProjectCardProps {
   project: Project;
@@ -55,6 +55,11 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   loading = false,
 }) => {
   const template = templateConfig[project.template];
+  const { containerStatus, containerMetrics } = useSSE();
+  
+  // Usar estado del SSE si está disponible, sino usar el del proyecto
+  const currentStatus = (containerStatus[project.id] as ContainerStatus) || (project.status as ContainerStatus);
+  const currentMetrics = containerMetrics[project.id] || project.metrics;
 
   return (
     <Card className="hover:shadow-lg transition-shadow">
@@ -63,7 +68,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           <div className="flex-1">
             <CardTitle className="flex items-center gap-2">
               {project.name}
-              <LiveStatusBadge status={project.status as ContainerStatus} />
+              <LiveStatusBadge status={currentStatus} />
             </CardTitle>
             <a
               href={project.url}
@@ -89,21 +94,21 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               <p className="text-muted-foreground flex items-center gap-1">
                 <Activity className="w-4 h-4" /> CPU
               </p>
-              <p className="mt-1">{project.metrics.cpu}%</p>
+              <p className="mt-1">{Math.round(currentMetrics.cpu)}%</p>
             </div>
             <div>
               <p className="text-muted-foreground">Memory</p>
-              <p className="mt-1">{project.metrics.memory} MB</p>
+              <p className="mt-1">{Math.round(currentMetrics.memory)} MB</p>
             </div>
             <div>
               <p className="text-muted-foreground">Requests</p>
-              <p className="mt-1">{project.metrics.requests}</p>
+              <p className="mt-1">{currentMetrics.requests}</p>
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            {project.status === 'stopped' ? (
+            {currentStatus === 'stopped' || currentStatus === 'inactive' ? (
               <Button
                 size="sm"
                 onClick={() => onStart?.(project.id)}
@@ -113,7 +118,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                 <Play className="w-4 h-4 mr-2" />
                 Start
               </Button>
-            ) : project.status === 'running' ? (
+            ) : currentStatus === 'running' ? (
               <Button
                 size="sm"
                 variant="outline"

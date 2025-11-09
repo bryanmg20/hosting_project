@@ -78,13 +78,13 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="name">user</Label>
+              <Label htmlFor="name">Full Name</Label>
               <Input
                 id="name"
                 type="text"
-                placeholder="User"
+                placeholder="Juan Pérez"
                 value={name}
-                onChange={(e) => setName(e.target.value.replace(/\s+/g, ''))}
+                onChange={(e) => setName(e.target.value)}
                 required
                 disabled={loading}
               />

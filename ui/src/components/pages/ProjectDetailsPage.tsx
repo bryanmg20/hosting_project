@@ -87,8 +87,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
-  const { containerMetrics, updateContainerStatus } = useSSE();
+  const { containerStatus, containerMetrics, updateContainerStatus } = useSSE();
   
+  // Usar estado del SSE si está disponible
+  const currentStatus = project ? (containerStatus[projectId] as ContainerStatus) || (project.status as ContainerStatus) : null;
   const liveMetrics = containerMetrics[projectId];
 
   useEffect(() => {
@@ -103,7 +105,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
       const data = await getProject(projectId);
       if (data) {
         setProject(data);
-        updateContainerStatus(projectId, data.status as ContainerStatus);
+        // Solo sincronizar con SSE si NO tiene datos previos (evita sobrescribir)
+        if (!containerStatus[projectId]) {
+          updateContainerStatus(projectId, data.status as ContainerStatus);
+        }
       } else {
         setError('Project not found');
       }
@@ -121,17 +126,20 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
     try {
       setActionLoading(true);
       
+      // Actualizar estado optimista a "deploying"
+      updateContainerStatus(projectId, 'deploying');
+      
       // API Call: POST /api/containers/:id/start
       await startContainer(project.id);
       
-      setTimeout(() => {
-        updateContainerStatus(projectId, 'running');
-      }, 1500);
-      
       toast.success('Container started successfully');
-      await loadProject();
+      
+      // El SSE actualizará el estado a "running" automáticamente
+      // No necesitamos refetch
     } catch (err) {
       toast.error('Failed to start container');
+      // Revertir en caso de error
+      updateContainerStatus(projectId, 'stopped');
     } finally {
       setActionLoading(false);
     }
@@ -146,12 +154,10 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
       // API Call: POST /api/containers/:id/stop
       await stopContainer(project.id);
       
-      setTimeout(() => {
-        updateContainerStatus(projectId, 'stopped');
-      }, 500);
-      
       toast.success('Container stopped successfully');
-      await loadProject();
+      
+      // El SSE actualizará el estado a "stopped" automáticamente
+      // No necesitamos refetch
     } catch (err) {
       toast.error('Failed to stop container');
     } finally {
@@ -209,8 +215,8 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
     );
   }
 
-  const status = statusConfig[project.status];
   const template = templateConfig[project.template];
+  const status = statusConfig[currentStatus!];
 
   return (
     <div className="min-h-screen bg-background">
@@ -228,7 +234,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
         </div>
 
         {/* Status Alerts */}
-        {project.status === 'inactive' && (
+        {currentStatus === 'inactive' && (
           <Alert className="mb-6 bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800">
             <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
             <AlertDescription className="text-yellow-800 dark:text-yellow-200">
@@ -237,7 +243,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
           </Alert>
         )}
 
-        {project.status === 'error' && (
+        {currentStatus === 'error' && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
@@ -246,7 +252,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
           </Alert>
         )}
 
-        {project.status === 'deploying' && (
+        {currentStatus === 'deploying' && (
           <Alert className="mb-6 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
             <Loader2 className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin" />
             <AlertDescription className="text-blue-800 dark:text-blue-200">
@@ -262,7 +268,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2 flex-wrap">
                   <CardTitle>{project.name}</CardTitle>
-                  <LiveStatusBadge status={project.status as ContainerStatus} />
+                  <LiveStatusBadge status={currentStatus!} />
                   <Badge variant="outline" className={template.color}>
                     {template.label}
                   </Badge>
@@ -273,16 +279,16 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {project.status === 'stopped' || project.status === 'inactive' ? (
+                {currentStatus === 'stopped' || currentStatus === 'inactive' ? (
                   <Button onClick={handleStart} disabled={actionLoading}>
                     {actionLoading ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (
                       <Play className="w-4 h-4 mr-2" />
                     )}
-                    {project.status === 'inactive' ? 'Reactivate' : 'Start'}
+                    {currentStatus === 'inactive' ? 'Reactivate' : 'Start'}
                   </Button>
-                ) : project.status === 'running' ? (
+                ) : currentStatus === 'running' ? (
                   <>
                     <Button variant="outline" onClick={handleStop} disabled={actionLoading}>
                       {actionLoading ? (
@@ -301,7 +307,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
                       <RotateCw className="w-4 h-4" />
                     </Button>
                   </>
-                ) : project.status === 'error' ? (
+                ) : currentStatus === 'error' ? (
                   <Button onClick={handleStart} disabled={actionLoading} variant="default">
                     {actionLoading ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -312,7 +318,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
                   </Button>
                 ) : null}
 
-                {project.status === 'running' && (
+                {currentStatus === 'running' && (
                   <Button
                     variant="outline"
                     onClick={() => window.open(project.url, '_blank')}
@@ -339,7 +345,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Live Metrics - Solo si el contenedor está running */}
-            {project.status === 'running' && liveMetrics && (
+            {currentStatus === 'running' && liveMetrics && (
               <LiveMetricsChart metrics={liveMetrics} projectId={projectId} />
             )}
           </div>
@@ -415,7 +421,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
-                  <div className={`w-3 h-3 rounded-full ${status.dotColor || 'bg-gray-500'} animate-pulse`} />
+                  <div className={`w-3 h-3 rounded-full ${status.dotColor} animate-pulse`} />
                   <div className="flex-1">
                     <p>Container is {status.label.toLowerCase()}</p>
                     <p className="text-muted-foreground">
@@ -424,11 +430,11 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
                   </div>
                 </div>
                 <p className="text-muted-foreground mt-4">
-                  {project.status === 'running'
+                  {currentStatus === 'running'
                     ? 'Your application is accessible and serving traffic.'
-                    : project.status === 'stopped'
+                    : currentStatus === 'stopped'
                     ? 'Start the container to make your application accessible.'
-                    : project.status === 'deploying'
+                    : currentStatus === 'deploying'
                     ? 'Your application is being deployed. This may take a few moments.'
                     : 'There was an error with your container. Please check the logs.'}
                 </p>
@@ -441,7 +447,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {project.status === 'running' && (
+                {currentStatus === 'running' && (
                   <Button
                     variant="outline"
                     className="w-full justify-start"

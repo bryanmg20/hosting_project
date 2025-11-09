@@ -23,7 +23,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const { containerMetrics } = useSSE();
+  const { containerMetrics, updateContainerStatus } = useSSE();
 
   useEffect(() => {
     loadProjects();
@@ -36,6 +36,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       // API Call: GET /api/projects
       const data = await getProjects();
       setProjects(data);
+      
+      // Sincronizar estados iniciales con SSE
+      data.forEach(project => {
+        updateContainerStatus(project.id, project.status as any);
+      });
     } catch (err) {
       setError('Error loading projects');
       toast.error('Failed to load projects');
@@ -47,12 +52,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const handleStart = async (id: string) => {
     try {
       setActionLoading(id);
+      // Actualizar estado a "deploying" mientras arranca
+      updateContainerStatus(id, 'deploying');
+      
       // API Call: POST /api/containers/:id/start
       await startContainer(id);
       toast.success('Container started successfully');
-      await loadProjects();
+      
+      // El SSE actualizará el estado a "running" automáticamente
+      // No necesitamos refetch completo
     } catch (err) {
       toast.error('Failed to start container');
+      // Revertir a stopped en caso de error
+      updateContainerStatus(id, 'stopped');
     } finally {
       setActionLoading(null);
     }
@@ -61,10 +73,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const handleStop = async (id: string) => {
     try {
       setActionLoading(id);
+      
       // API Call: POST /api/containers/:id/stop
       await stopContainer(id);
       toast.success('Container stopped successfully');
-      await loadProjects();
+      
+      // El SSE actualizará el estado a "stopped" automáticamente
+      // No necesitamos refetch completo
     } catch (err) {
       toast.error('Failed to stop container');
     } finally {

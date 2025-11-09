@@ -4,7 +4,7 @@
 
 export const STORAGE_KEYS = {
   AUTH_TOKEN: 'auth_token',
-  REFRESH_TOKEN: 'refresh_token', 
+  REFRESH_TOKEN: 'refresh_token', // Para implementación futura
   USER_DATA: 'user_data', // Cache opcional para UI
   THEME: 'theme',
 } as const;

@@ -1,9 +1,35 @@
 /**
  * SSE Context - Real-time Container Monitoring via Server-Sent Events
+ * 
+ * SSE CONNECTION:
+ * - GET /api/containers/events → Stream de eventos de estado
+ * 
+ * FEATURES:
+ * - Conexión SSE permanente al backend
+ * - Reconexión automática si se pierde la conexión
+ * - Frecuencia de updates manejada internamente por el backend
+ * - Connection status indicator (connecting, connected, disconnected)
+ * - Container status tracking (running, stopped, deploying, inactive, error)
+ * - Toast notifications for status changes
+ * 
+ * SSE EVENTS:
+ * - container_status_changed: Cuando cambia estado running/stopped
+ * - metrics_updated: Métricas cada X tiempo definido internamente
+ * - auto_shutdown: Cuando se apaga por inactividad
+ * 
+ * ESTADOS DE CONEXIÓN:
+ * - connecting: 🔵 Conectando...
+ * - connected: ✅ Conectado (actualizaciones automáticas)
+ * - disconnected: 🔴 Desconectado
+ * 
+ * BACKEND IMPLEMENTATION:
+ * El backend debe implementar SSE endpoint que incluya Authorization header:
+ * - Aceptar token via query param: /api/containers/events?token={jwt}
+ * - O usar EventSource polyfill que soporte headers
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import { getAuthToken } from './api';
 
 export type ContainerStatus = 'running' | 'stopped' | 'deploying' | 'inactive' | 'error';
@@ -22,6 +48,7 @@ interface SSEContextType {
   sseStatus: SSEStatus;
   containerStatus: Record<string, ContainerStatus>;
   containerMetrics: Record<string, ContainerMetrics>;
+  updateContainerStatus: (projectId: string, status: ContainerStatus) => void;
 }
 
 const SSEContext = createContext<SSEContextType | undefined>(undefined);
@@ -38,22 +65,23 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [sseStatus, setSseStatus] = useState<SSEStatus>('disconnected');
   const [containerStatus, setContainerStatus] = useState<Record<string, ContainerStatus>>({});
   const [containerMetrics, setContainerMetrics] = useState<Record<string, ContainerMetrics>>({});
-  const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const eventSourceRef = useRef<EventSource | null>(null);
 
-  // Conectar a SSE real
+  // Conectar a SSE
   const connectSSE = useCallback(() => {
+    // Obtener token de autenticación
     const token = getAuthToken();
     if (!token) {
+      // Usuario no autenticado, no conectar SSE
       setSseStatus('disconnected');
-      return;
+      return () => {};
     }
 
     setSseStatus('connecting');
 
+    // IMPLEMENTACIÓN REAL: Conexión SSE con backend
     const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-    
-    // Conexión SSE real con token en query param
     const eventSource = new EventSource(`${apiBaseUrl}/containers/events?token=${token}`);
     
     eventSource.onopen = () => {
@@ -63,94 +91,64 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     };
 
-    // Evento: Cambio de estado de contenedor
-    eventSource.addEventListener('container_status_changed', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        setContainerStatus(prev => ({ 
-          ...prev, 
-          [data.projectId]: data.status 
-        }));
-        
-        // Notificación de cambio de estado
-        if (data.previousStatus && data.previousStatus !== data.status) {
-          toast.info(`Estado actualizado: ${data.status}`, {
-            description: `Contenedor ${data.projectId}`,
-          });
-        }
-      } catch (error) {
-        console.error('Error parsing container_status_changed:', error);
-      }
-    });
-
-    // Evento: Métricas actualizadas
+    // Evento: Métricas actualizadas (CPU, memoria, requests)
     eventSource.addEventListener('metrics_updated', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        setContainerMetrics(prev => ({ 
-          ...prev, 
-          [data.projectId]: data.metrics 
-        }));
-      } catch (error) {
-        console.error('Error parsing metrics_updated:', error);
+      const data = JSON.parse(event.data);
+      setContainerMetrics(prev => ({ ...prev, [data.projectId]: data.metrics }));
+    });
+
+    // Evento: Estado del contenedor cambió (running, stopped, deploying, etc.)
+    eventSource.addEventListener('container_status_changed', (event) => {
+      const data = JSON.parse(event.data);
+      setContainerStatus(prev => ({ ...prev, [data.projectId]: data.status }));
+      
+      // Opcional: Notificar al usuario del cambio
+      if (data.notify !== false) {
+        const statusLabels = {
+          running: 'iniciado',
+          stopped: 'detenido',
+          deploying: 'desplegando',
+          error: 'con error',
+          inactive: 'inactivo',
+        };
+        toast.info(`Contenedor ${statusLabels[data.status as ContainerStatus] || data.status}`);
       }
     });
 
-    // Evento: Auto shutdown
+    // Evento: Auto-shutdown por inactividad
     eventSource.addEventListener('auto_shutdown', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        setContainerStatus(prev => ({ 
-          ...prev, 
-          [data.projectId]: 'inactive' 
-        }));
-        
-        toast.warning('Auto-shutdown activado', {
-          description: `Contenedor ${data.projectId} pausado por inactividad`,
-        });
-      } catch (error) {
-        console.error('Error parsing auto_shutdown:', error);
-      }
+      const data = JSON.parse(event.data);
+      setContainerStatus(prev => ({ ...prev, [data.projectId]: 'inactive' }));
+      toast.warning('Auto-shutdown activado', {
+        description: `El contenedor ${data.projectName || ''} ha sido pausado por inactividad`,
+      });
     });
 
-    // Evento: Error del contenedor
-    eventSource.addEventListener('container_error', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        setContainerStatus(prev => ({ 
-          ...prev, 
-          [data.projectId]: 'error' 
-        }));
-        
-        toast.error('Error en contenedor', {
-          description: data.message || `Contenedor ${data.projectId}`,
-        });
-      } catch (error) {
-        console.error('Error parsing container_error:', error);
-      }
-    });
-
-    eventSource.onerror = (error) => {
-      console.error('SSE Error:', error);
+    eventSource.onerror = () => {
       setSseStatus('disconnected');
       eventSource.close();
-      
-      // Reconexión automática
-      reconnectTimeoutRef.current = setTimeout(() => {
-        connectSSE();
-      }, 5000);
+      toast.error('Conexión SSE perdida', {
+        description: 'Reintentando conexión...',
+      });
     };
 
     eventSourceRef.current = eventSource;
 
-    // Cleanup function
     return () => {
       eventSource.close();
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
     };
   }, []);
+
+  // Reconexión automática
+  const handleReconnect = useCallback(() => {
+    // Solo reconectar si hay token de autenticación
+    const token = getAuthToken();
+    if (sseStatus === 'disconnected' && token) {
+      reconnectTimeoutRef.current = setTimeout(() => {
+        connectSSE();
+      }, 9000); // Reintentar después de 3 segundos
+    }
+  }, [sseStatus, connectSSE]);
 
   // Inicializar conexión SSE
   useEffect(() => {
@@ -158,22 +156,78 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return cleanup;
   }, [connectSSE]);
 
-  // Limpiar al desmontar
+  // Manejar reconexión automática
   useEffect(() => {
+    if (sseStatus === 'disconnected') {
+      handleReconnect();
+    }
+    
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
+  }, [sseStatus, handleReconnect]);
+
+  // OPCIONAL: Simular eventos SSE para testing sin backend
+  // Descomentar estos efectos solo si necesitas testing local sin backend
+  
+  // useEffect(() => {
+  //   if (sseStatus !== 'connected') return;
+  //
+  //   const metricsInterval = setInterval(() => {
+  //     setContainerMetrics((prev) => {
+  //       const updated = { ...prev };
+  //       Object.keys(containerStatus).forEach((projectId) => {
+  //         if (containerStatus[projectId] === 'running') {
+  //           const currentMetrics = prev[projectId] || {
+  //             cpu: 0,
+  //             memory: 0,
+  //             requests: 0,
+  //             uptime: '0s',
+  //             lastActivity: new Date().toISOString(),
+  //           };
+  //
+  //           updated[projectId] = {
+  //             cpu: Math.min(100, Math.max(0, currentMetrics.cpu + (Math.random() - 0.5) * 10)),
+  //             memory: Math.min(512, Math.max(50, currentMetrics.memory + (Math.random() - 0.5) * 20)),
+  //             requests: currentMetrics.requests + Math.floor(Math.random() * 5),
+  //             uptime: currentMetrics.uptime,
+  //             lastActivity: new Date().toISOString(),
+  //           };
+  //         }
+  //       });
+  //       return updated;
+  //     });
+  //   }, 4000);
+  //
+  //   return () => clearInterval(metricsInterval);
+  // }, [sseStatus, containerStatus]);
+
+  // Actualizar manualmente el estado de un contenedor (usado por componentes)
+  const updateContainerStatus = useCallback((projectId: string, status: ContainerStatus) => {
+    setContainerStatus((prev) => ({ ...prev, [projectId]: status }));
+    
+    // Si cambia a running, inicializar métricas
+    if (status === 'running') {
+      setContainerMetrics((prev) => ({
+        ...prev,
+        [projectId]: prev[projectId] || {
+          cpu: 0,
+          memory: 0,
+          requests: 0,
+          uptime: '0s',
+          lastActivity: new Date().toISOString(),
+        },
+      }));
+    }
   }, []);
 
   const value: SSEContextType = {
     sseStatus,
     containerStatus,
     containerMetrics,
+    updateContainerStatus,
   };
 
   return (

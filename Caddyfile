@@ -13,3 +13,7 @@ ui.localhost {
 api.localhost {
     reverse_proxy backend:5000
 }
+
+*.localhost {
+    reverse_proxy backend:5000
+}

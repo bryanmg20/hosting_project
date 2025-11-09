@@ -5,7 +5,6 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Progress } from '../ui/progress';
-import { Alert, AlertDescription } from '../ui/alert';
 import { ArrowLeft, CheckCircle2, XCircle, Loader2, Code2, Rocket, Flame, ExternalLink } from 'lucide-react';
 import { createProject, Project } from '../../lib/api';
 import { toast } from 'sonner@2.0.3';
