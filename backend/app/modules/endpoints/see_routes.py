@@ -1,44 +1,28 @@
+# app/modules/sse/routes/sse_routes.py
 from flask import Blueprint, Response, request, jsonify
-from flask_jwt_extended import jwt_required, decode_token
-from app.modules.auth.services.container_service import container_service
+from flask_jwt_extended import jwt_required, decode_token, get_jwt_identity
+from app.modules.sse.services.containers import (
+    update_user_containers,
+    check_container_changes,
+    get_containers_metrics,
+    _current_containers,
+    get_real_container_status
+)
 import json
 import time
-import random
 from datetime import datetime
 
 sse_bp = Blueprint('sse', __name__)
 
-def get_real_container_status(container_id: str) -> str:
-    """
-    Obtener el estado REAL del contenedor desde Docker
-    Por ahora es un mock, pero después se conectará a Docker real
-    """
-    try:
-        # Mock temporal - simular estados basados en probabilidad
-        status_probability = random.random()
-        if status_probability < 0.7:  # 70% running
-            return 'running'
-        elif status_probability < 0.85:  # 15% stopped
-            return 'stopped'
-        elif status_probability < 0.95:  # 10% restarting
-            return 'error'
-        else:  # 5% error
-            return 'error'
-    except Exception as e:
-        print(f"❌ Error getting container status for {container_id}: {e}")
-        return 'unknown'
-
 @sse_bp.route('/containers/events')
 def sse_events():
-    """SSE endpoint para eventos en tiempo real con proyectos REALES del usuario"""
+    """SSE endpoint para eventos en tiempo real - consulta Docker real"""
     
-    # Verificar token JWT
     token = request.args.get('token')
     if not token:
         return "Token required", 401
     
     try:
-        # Decodificar y verificar el token JWT
         decoded_token = decode_token(token)
         user_email = decoded_token['sub']
         print(f"✅ SSE: Connected user {user_email}")
@@ -48,10 +32,8 @@ def sse_events():
     
     def generate_events():
         try:
-            # Obtener proyectos REALES del usuario
-            containers_result = container_service.get_user_containers(user_email)
-            
-            if not containers_result['success']:
+            # Actualización inicial de contenedores
+            if not update_user_containers(user_email):
                 yield f"event: container_error\n"
                 error_data = json.dumps({
                     'message': 'Failed to fetch user containers',
@@ -60,110 +42,61 @@ def sse_events():
                 yield f"data: {error_data}\n\n"
                 return
             
-            real_containers = containers_result.get('containers', [])
-            print(f"📋 SSE: User {user_email} has {len(real_containers)} containers")
-            
-            # Evento de conexión exitosa con info de containers
+            # Evento de conexión exitosa
             yield f"event: connected\n"
             connected_data = json.dumps({
-                'message': f'SSE connected for {len(real_containers)} containers',
-                'containerCount': len(real_containers),
+                'message': 'SSE connected successfully',
                 'userEmail': user_email
             })
             yield f"data: {connected_data}\n\n"
             
             # Enviar estado inicial de todos los contenedores
-            for container in real_containers:
+            containers = _current_containers.get(user_email, [])
+            for container in containers:
                 container_id = container.get('id')
+                container_name = container.get('container_name', container_id)
                 if container_id:
-                    real_status = get_real_container_status(container_id)
+                    initial_status = get_real_container_status(container_name, container_id)
+                    container['status'] = initial_status
+                    
                     yield f"event: container_status_changed\n"
                     status_data = json.dumps({
                         'projectId': container_id,
-                        'status': real_status,
-                        'previousStatus': 'unknown',
+                        'status': initial_status,
+                        'previousStatus': initial_status,
                         'name': container.get('name', 'Unknown'),
+                        'containerName': container_name,
+                        'url': container.get('url', ''),
                         'timestamp': datetime.utcnow().isoformat() + 'Z'
                     })
                     yield f"data: {status_data}\n\n"
             
-            # Monitorear cambios en tiempo real
-            event_id = 0
-            previous_states = {}
+            # Bucle principal de monitoreo - CADA 3 SEGUNDOS
+            update_counter = 0
             
             while True:
-                event_id += 1
+                update_counter += 1
                 
-                # Para cada contenedor real, verificar si hay cambios
-                for container in real_containers:
-                    container_id = container.get('id')
-                    if not container_id:
-                        continue
-                    
-                    # Obtener estado actual (mock por ahora)
-                    current_status = get_real_container_status(container_id)
-                    previous_status = previous_states.get(container_id)
-                    
-                    # Solo enviar evento si el estado cambió
-                    if previous_status != current_status:
-                        yield f"event: container_status_changed\n"
-                        change_data = json.dumps({
-                            'projectId': container_id,
-                            'status': current_status,
-                            'previousStatus': previous_status or 'unknown',
-                            'name': container.get('name', 'Unknown'),
-                            'timestamp': datetime.utcnow().isoformat() + 'Z'
-                        })
-                        yield f"data: {change_data}\n\n"
-                        
-                        previous_states[container_id] = current_status
+                # Actualizar lista de contenedores cada 20 ciclos (≈1 minuto)
+                if update_counter % 20 == 0:
+                    print(f"🔄 SSE: Updating container list for {user_email}")
+                    update_user_containers(user_email)
+                    update_counter = 0
                 
-                # También enviar métricas periódicamente para contenedores running
-                for container in real_containers:
-                    container_id = container.get('id')
-                    if container_id and previous_states.get(container_id) == 'running':
-                        yield f"event: metrics_updated\n"
-                        metrics_data = json.dumps({
-                            'projectId': container_id,
-                            'metrics': {
-                                'cpu': random.randint(5, 95),
-                                'memory': random.randint(50, 512),
-                                'requests': random.randint(0, 1000),
-                                'uptime': f"{random.randint(0, 24)}h {random.randint(0, 59)}m",
-                                'lastActivity': datetime.utcnow().isoformat() + 'Z'
-                            }
-                        })
-                        yield f"data: {metrics_data}\n\n"
+                # 1. Revisar cambios de estado REALES desde Docker
+                status_changes = check_container_changes(user_email)
+                for change in status_changes:
+                    yield f"event: {change['event_type']}\n"
+                    yield f"data: {json.dumps(change['data'])}\n\n"
                 
-                # Simular eventos especiales ocasionalmente
-                if random.random() < 0.1:  # 10% de probabilidad
-                    container = random.choice(real_containers)
-                    container_id = container.get('id')
-                    
-                    if random.random() < 0.5:
-                        # Auto shutdown
-                        yield f"event: auto_shutdown\n"
-                        shutdown_data = json.dumps({
-                            'projectId': container_id,
-                            'reason': 'inactivity',
-                            'timestamp': datetime.utcnow().isoformat() + 'Z'
-                        })
-                        yield f"data: {shutdown_data}\n\n"
-                        previous_states[container_id] = 'inactive'
-                    else:
-                        # Error de contenedor
-                        yield f"event: container_error\n"
-                        container_error_data = json.dumps({
-                            'projectId': container_id,
-                            'message': 'Container health check failed',
-                            'error_code': 'HEALTH_CHECK_FAILED',
-                            'timestamp': datetime.utcnow().isoformat() + 'Z'
-                        })
-                        yield f"data: {container_error_data}\n\n"
-                        previous_states[container_id] = 'error'
+                # 2. Enviar métricas SOLO para contenedores running (simuladas)
+                metrics_events = get_containers_metrics(user_email)
+                for metrics_event in metrics_events:
+                    yield f"event: {metrics_event['event_type']}\n"
+                    yield f"data: {json.dumps(metrics_event['data'])}\n\n"
                 
-                # Esperar 4 segundos entre ciclos de verificación
-                time.sleep(15)
+                # ESPERAR 3 SEGUNDOS entre revisiones
+                time.sleep(3)
                 
         except GeneratorExit:
             print(f"🔌 SSE: Client disconnected for user {user_email}")
@@ -188,6 +121,32 @@ def sse_events():
             'Access-Control-Allow-Credentials': 'true'
         }
     )
+
+
+# Endpoint para forzar actualización manual
+@sse_bp.route('/containers/refresh', methods=['POST'])
+@jwt_required()
+def refresh_containers():
+    """Forzar actualización de la lista de contenedores"""
+    try:
+        user_email = get_jwt_identity()
+        
+        if update_user_containers(user_email):
+            return jsonify({
+                'success': True,
+                'message': 'Containers list updated successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to update containers list'
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
 
 @sse_bp.route('/containers/events', methods=['OPTIONS'])
 def sse_options():

@@ -58,6 +58,12 @@ const statusConfig = {
     className: 'bg-gray-500 text-white',
     dotColor: 'bg-gray-500',
   },
+  unknown: {
+    label: 'Unknown',
+    icon: <Square className="w-4 h-4" />,
+    className: 'bg-gray-500 text-white',
+    dotColor: 'bg-gray-500',
+  },
   deploying: {
     label: 'Deploying',
     icon: <Loader2 className="w-4 h-4 animate-spin" />,

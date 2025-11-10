@@ -22,7 +22,7 @@ def format_project_response(container_data, status='running'):
 
 def format_project_list(containers):
     """Convierte lista de containers a formato Figma"""
-    return [format_project_response(container, 'stopped') for container in containers]
+    return [format_project_response(container, 'unknown') for container in containers]
 
 def create_new_project_data(name, username, template, github_url):
     """Crea estructura de nuevo proyecto"""
