@@ -25,6 +25,7 @@ export type {
 export {
   login,
   register,
+  registerOnly,
   logout,
   getCurrentUser,
   getCachedUser,

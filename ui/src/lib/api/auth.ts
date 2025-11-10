@@ -78,6 +78,25 @@ export const register = async (
 };
 
 // ========================================
+// POST /api/auth/register (sin autenticar)
+// ========================================
+export const registerOnly = async (
+  email: string,
+  password: string,
+  name: string
+): Promise<void> => {
+  const requestData: RegisterRequest = { email, password, name };
+
+  await apiClient.post<RegisterResponse>(
+    '/auth/register',
+    requestData,
+    { requiresAuth: false } // Register no requiere token
+  );
+
+  // NO guardar tokens - el usuario deberá hacer login manualmente
+};
+
+// ========================================
 // POST /api/auth/logout
 // ========================================
 export const logout = async (): Promise<void> => {

@@ -7,13 +7,14 @@ import { Alert, AlertDescription } from '../ui/alert';
 import { Server, AlertCircle, Loader2, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 import { useTheme } from '../../lib/theme-context';
+import { toast } from 'sonner';
 
 interface RegisterPageProps {
-  onSwitchToLogin: () => void;
+  onSwitchToLogin: (email: string) => void;
 }
 
 export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) => {
-  const { register } = useAuth();
+  const { registerOnly } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -22,9 +23,26 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Validar username: solo letras, números, guiones bajos y guiones medios
+  const handleUsernameChange = (value: string) => {
+    // Solo permitir caracteres alfanuméricos, guiones bajos y guiones medios
+    const sanitized = value.replace(/[^a-zA-Z0-9_-]/g, '');
+    setName(sanitized);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!name.trim()) {
+      setError('El nombre de usuario es requerido');
+      return;
+    }
+
+    if (name.length < 3) {
+      setError('El nombre de usuario debe tener al menos 3 caracteres');
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden');
@@ -34,11 +52,18 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
     setLoading(true);
 
     try {
-      // API Call: POST /api/auth/register
-      await register(email, password, name);
+      // API Call: POST /api/auth/register (sin autenticar automáticamente)
+      await registerOnly(email, password, name);
+      
+      // Mostrar mensaje de éxito
+      toast.success('¡Cuenta creada exitosamente!', {
+        description: 'Ahora puedes iniciar sesión con tus credenciales.'
+      });
+      
+      // Redirigir a login con el email prellenado
+      onSwitchToLogin(email);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al registrarse');
-    } finally {
       setLoading(false);
     }
   };
@@ -69,7 +94,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -78,45 +103,47 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
             )}
 
             <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder="Juan"
-              value={name}
-              onChange={(e) => {
-                // Filtrar caracteres no permitidos
-                const filteredValue = e.target.value
-                  .replace(/[^a-zA-Z0-9-_]/g, '') // Solo letras, números, guiones y underscores
-                  .toLowerCase(); // Convertir a minúsculas
-                setName(filteredValue);
-              }}
-              required
-              disabled={loading}
-            />
-            {name && (
-              <p className="text-xs text-muted-foreground">
-                Solo se permiten letras, números, guiones (-) y underscores (_)
-              </p>
-            )}
-          </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="register-username">User</Label>
               <Input
-                id="email"
+                id="register-username"
+                name="username"
+                type="text"
+                placeholder="john_doe"
+                value={name}
+                onChange={(e) => handleUsernameChange(e.target.value)}
+                required
+                disabled={loading}
+                autoComplete="username"
+                minLength={3}
+                maxLength={20}
+                pattern="[a-zA-Z0-9_-]+"
+                title="Solo letras, números, guiones bajos (_) y guiones medios (-)"
+              />
+              <p className="text-xs text-muted-foreground">
+                Solo letras, números, guiones bajos (_) y guiones medios (-)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="register-email">Email</Label>
+              <Input
+                id="register-email"
+                name="email"
                 type="email"
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
+                autoComplete="email"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="register-password">Password</Label>
               <Input
-                id="password"
+                id="register-password"
+                name="new-password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
@@ -124,13 +151,15 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
                 required
                 disabled={loading}
                 minLength={6}
+                autoComplete="new-password"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="register-confirm-password">Confirm Password</Label>
               <Input
-                id="confirmPassword"
+                id="register-confirm-password"
+                name="confirm-password"
                 type="password"
                 placeholder="••••••••"
                 value={confirmPassword}
@@ -138,6 +167,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
                 required
                 disabled={loading}
                 minLength={6}
+                autoComplete="new-password"
               />
             </div>
 

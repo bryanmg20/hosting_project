@@ -67,6 +67,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [containerMetrics, setContainerMetrics] = useState<Record<string, ContainerMetrics>>({});
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const eventSourceRef = useRef<EventSource | null>(null);
+  const isInitialSyncRef = useRef<boolean>(true); // Flag para suprimir notificaciones iniciales
 
   // Conectar a SSE
   const connectSSE = useCallback(() => {
@@ -89,6 +90,14 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toast.success('Conexión SSE establecida', {
         description: 'Actualizaciones automáticas activadas',
       });
+      
+      // Marcar como sync inicial para suprimir notificaciones de contenedores
+      isInitialSyncRef.current = true;
+      
+      // Después de 2 segundos, permitir notificaciones normales
+      setTimeout(() => {
+        isInitialSyncRef.current = false;
+      }, 2000);
     };
 
     // Evento: Métricas actualizadas (CPU, memoria, requests)
@@ -103,7 +112,8 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setContainerStatus(prev => ({ ...prev, [data.projectId]: data.status }));
       
       // Opcional: Notificar al usuario del cambio
-      if (data.notify !== false) {
+      // Suprimir notificaciones durante sincronización inicial (primeros 2s)
+      if (data.notify !== false && !isInitialSyncRef.current) {
         const statusLabels = {
           running: 'iniciado',
           stopped: 'detenido',
@@ -146,7 +156,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (sseStatus === 'disconnected' && token) {
       reconnectTimeoutRef.current = setTimeout(() => {
         connectSSE();
-      }, 3000); // Reintentar después de 3 segundos
+      }, 20000); // Reintentar después de 3 segundos
     }
   }, [sseStatus, connectSSE]);
 
@@ -188,6 +198,9 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSseStatus('disconnected');
       setContainerStatus({});
       setContainerMetrics({});
+      
+      // Resetear flag de sync inicial para próximo login
+      isInitialSyncRef.current = true;
       
       console.log('SSE desconectado por logout');
     };

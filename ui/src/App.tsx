@@ -15,6 +15,7 @@ type Page = 'login' | 'register' | 'dashboard' | 'create-project' | 'project-det
 interface AppState {
   page: Page;
   selectedProjectId?: string;
+  prefilledEmail?: string;
 }
 
 function AppContent() {
@@ -26,6 +27,11 @@ function AppContent() {
   // Handle navigation
   const navigateTo = (page: Page, projectId?: string) => {
     setAppState({ page, selectedProjectId: projectId });
+  };
+
+  // Handle navigation to login with prefilled email
+  const navigateToLoginWithEmail = (email: string) => {
+    setAppState({ page: 'login', prefilledEmail: email });
   };
 
   // Show loading screen while checking authentication
@@ -44,11 +50,14 @@ function AppContent() {
   if (!user) {
     if (appState.page === 'register') {
       return (
-        <RegisterPage onSwitchToLogin={() => navigateTo('login')} />
+        <RegisterPage onSwitchToLogin={navigateToLoginWithEmail} />
       );
     }
     return (
-      <LoginPage onSwitchToRegister={() => navigateTo('register')} />
+      <LoginPage 
+        onSwitchToRegister={() => navigateTo('register')}
+        prefilledEmail={appState.prefilledEmail}
+      />
     );
   }
 

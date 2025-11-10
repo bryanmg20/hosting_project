@@ -3,6 +3,7 @@ import {
   User,
   login as apiLogin,
   register as apiRegister,
+  registerOnly as apiRegisterOnly,
   logout as apiLogout,
   getCurrentUser,
   getCachedUser,
@@ -14,6 +15,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
+  registerOnly: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -72,6 +74,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(registeredUser);
   };
 
+  // Registrar sin autenticar automáticamente
+  const registerOnly = async (email: string, password: string, name: string) => {
+    await apiRegisterOnly(email, password, name);
+    // No setear el usuario - mantener sesión no autenticada
+  };
+
   const logout = async () => {
     await apiLogout();
     setUser(null);
@@ -84,6 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         login,
         register,
+        registerOnly,
         logout,
         isAuthenticated: !!user,
       }}
