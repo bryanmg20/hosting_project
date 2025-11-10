@@ -146,7 +146,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (sseStatus === 'disconnected' && token) {
       reconnectTimeoutRef.current = setTimeout(() => {
         connectSSE();
-      }, 9000); // Reintentar después de 3 segundos
+      }, 3000); // Reintentar después de 3 segundos
     }
   }, [sseStatus, connectSSE]);
 
@@ -168,6 +168,43 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
   }, [sseStatus, handleReconnect]);
+
+  // Escuchar eventos de logout para cerrar conexión SSE
+  useEffect(() => {
+    const handleLogout = () => {
+      // Cerrar conexión SSE existente
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      
+      // Limpiar timeout de reconexión
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = undefined;
+      }
+      
+      // Actualizar estados
+      setSseStatus('disconnected');
+      setContainerStatus({});
+      setContainerMetrics({});
+      
+      console.log('SSE desconectado por logout');
+    };
+
+    const handleUnauthorized = () => {
+      // Similar al logout, cerrar conexión SSE cuando se detecta unauthorized
+      handleLogout();
+    };
+
+    window.addEventListener('auth:logout', handleLogout);
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    
+    return () => {
+      window.removeEventListener('auth:logout', handleLogout);
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
+  }, []);
 
   // OPCIONAL: Simular eventos SSE para testing sin backend
   // Descomentar estos efectos solo si necesitas testing local sin backend

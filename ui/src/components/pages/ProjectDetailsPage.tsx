@@ -34,6 +34,7 @@ import {
   stopContainer,
   deleteProject,
   getContainerStatus,
+  normalizeUrl,
 } from '../../lib/api';
 import { toast } from 'sonner@2.0.3';
 import { useSSE, ContainerStatus } from '../../lib/sse-context';
@@ -321,7 +322,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
                 {currentStatus === 'running' && (
                   <Button
                     variant="outline"
-                    onClick={() => window.open(project.url, '_blank')}
+                    onClick={() => window.open(normalizeUrl(project.url), '_blank')}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Open
@@ -364,7 +365,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
                     <span>URL</span>
                   </div>
                   <a
-                    href={project.url}
+                    href={normalizeUrl(project.url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 dark:text-blue-400 hover:underline break-all"
@@ -451,7 +452,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
                   <Button
                     variant="outline"
                     className="w-full justify-start"
-                    onClick={() => window.open(project.url, '_blank')}
+                    onClick={() => window.open(normalizeUrl(project.url), '_blank')}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Visit Website

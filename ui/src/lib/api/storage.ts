@@ -38,6 +38,9 @@ export const clearAuthTokens = (): void => {
   localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.USER_DATA);
+  
+  // Emitir evento para que SSE y otros listeners sepan que se hizo logout
+  window.dispatchEvent(new Event('auth:logout'));
 };
 
 // ========================================

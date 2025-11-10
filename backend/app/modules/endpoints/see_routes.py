@@ -163,7 +163,7 @@ def sse_events():
                         previous_states[container_id] = 'error'
                 
                 # Esperar 4 segundos entre ciclos de verificación
-                time.sleep(30)
+                time.sleep(6)
                 
         except GeneratorExit:
             print(f"🔌 SSE: Client disconnected for user {user_email}")

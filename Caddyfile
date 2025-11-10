@@ -1,19 +1,21 @@
 {
     email bemontoya@uninorte.edu.co
-    # Usar certificados internos de Caddy
+    # Usar certificados locales de desarrollo
     local_certs
-    # O especificar CA local
-    acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+    auto_https disable_redirects
 }
 
-ui.localhost {
+# Frontend
+http://ui.localhost {
     reverse_proxy ui:3000
 }
 
-api.localhost {
+# Backend principal
+http://api.localhost {
     reverse_proxy backend:5000
 }
 
-*.localhost {
+# Cualquier otro subdominio redirige al backend por defecto
+http://*.*.localhost {
     reverse_proxy backend:5000
 }

@@ -68,3 +68,8 @@ export {
   isUnauthorizedError,
   isServerError,
 } from './api-client';
+
+// Utilities
+export {
+  normalizeUrl,
+} from './utils';

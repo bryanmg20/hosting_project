@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { ExternalLink, Play, Square, Trash2, Activity } from 'lucide-react';
-import { Project } from '../../lib/api';
+import { Project, normalizeUrl } from '../../lib/api';
 import { LiveStatusBadge } from './LiveStatusBadge';
 import { ContainerStatus, useSSE } from '../../lib/sse-context';
 
@@ -71,7 +71,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               <LiveStatusBadge status={currentStatus} />
             </CardTitle>
             <a
-              href={project.url}
+              href={normalizeUrl(project.url)}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 dark:text-blue-400 hover:underline mt-1 inline-flex items-center gap-1"

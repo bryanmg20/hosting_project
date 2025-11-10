@@ -78,18 +78,28 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="Juan Pérez"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                disabled={loading}
-              />
-            </div>
-
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              type="text"
+              placeholder="Juan"
+              value={name}
+              onChange={(e) => {
+                // Filtrar caracteres no permitidos
+                const filteredValue = e.target.value
+                  .replace(/[^a-zA-Z0-9-_]/g, '') // Solo letras, números, guiones y underscores
+                  .toLowerCase(); // Convertir a minúsculas
+                setName(filteredValue);
+              }}
+              required
+              disabled={loading}
+            />
+            {name && (
+              <p className="text-xs text-muted-foreground">
+                Solo se permiten letras, números, guiones (-) y underscores (_)
+              </p>
+            )}
+          </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
