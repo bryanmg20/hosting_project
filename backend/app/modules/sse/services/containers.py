@@ -99,29 +99,24 @@ def get_real_container_status(container_name: str) -> str:
 
 def get_container_metrics(container_name: str) -> Dict:
     """
-    Obtener métricas REALES del contenedor desde Docker
-    Si no está running, devolver métricas vacías o None
+    Obtener métricas para el contenedor
     """
     try:
-        # Verificar si el contenedor está running
         status = get_real_container_status(container_name)
+        
         if status != 'running':
             return {
                 'cpu': 0,
-                'memory': 0,
-                'memory_usage': "0MB / 0MB",
-                'network': "0MB",
+                'memory': 0, 
                 'requests': 0,
                 'uptime': "0h 0m",
                 'lastActivity': datetime.utcnow().isoformat() + 'Z'
-                }
+            }
         
-        # SIMULAR métricas (esto es lo único que simulamos)
+        # Métricas simuladas para running
         return {
             'cpu': random.randint(5, 95),
             'memory': random.randint(50, 512),
-            'memory_usage': f"{random.randint(100, 500)}MB / {random.randint(512, 1024)}MB",
-            'network': f"{random.randint(1, 100)}MB",
             'requests': random.randint(0, 1000),
             'uptime': f"{random.randint(0, 24)}h {random.randint(0, 59)}m",
             'lastActivity': datetime.utcnow().isoformat() + 'Z'
@@ -129,9 +124,15 @@ def get_container_metrics(container_name: str) -> Dict:
         
     except Exception as e:
         print(f"❌ Error getting metrics for {container_name}: {e}")
-        return None
+        return {
+            'cpu': 0,
+            'memory': 0,
+            'requests': 0,
+            'uptime': "0h 0m",
+            'lastActivity': datetime.utcnow().isoformat() + 'Z'
+        }
 
-def check_container_changes(user_email: str) -> List[Dict]:
+def check_container_changes(user_email: str, previous_statuses: Dict[str, str] = None) -> List[Dict]:
     """
     Revisar todos los contenedores del usuario y detectar cambios REALES
     """
@@ -147,10 +148,16 @@ def check_container_changes(user_email: str) -> List[Dict]:
             
         # Obtener estado ACTUAL desde Docker REAL
         current_status = get_real_container_status(container_name)
-        previous_status = container.get('status', 'unknown')
+        
+        # ✅ USAR previous_statuses si se proporciona, sino usar el interno
+        if previous_statuses is not None:
+            previous_status = previous_statuses.get(container_id, 'unknown')
+        else:
+            previous_status = container.get('status', 'unknown')
         
         # Solo si hay cambio de estado REAL
         if previous_status != current_status:
+            print(f"🔄 check_container_changes: Status changed for {container_id}: {previous_status} -> {current_status}")
 
             changes.append({
                 'event_type': 'container_status_changed',
@@ -164,14 +171,19 @@ def check_container_changes(user_email: str) -> List[Dict]:
                     'timestamp': datetime.utcnow().isoformat() + 'Z'
                 }
             })
-            # Actualizar estado en el contenedor
+            
+            # ✅ Actualizar AMBOS: el estado interno Y previous_statuses si se proporciona
             container['status'] = current_status
+            if previous_statuses is not None:
+                previous_statuses[container_id] = current_status
     
     return changes
 
+# app/modules/sse/services/container_status_service.py
+
 def get_containers_metrics(user_email: str) -> List[Dict]:
     """
-    Obtener métricas SOLO para contenedores que están running
+    Obtener métricas para TODOS los contenedores (running o no)
     """
     metrics_events = []
     containers = _current_containers.get(user_email, [])
@@ -180,7 +192,8 @@ def get_containers_metrics(user_email: str) -> List[Dict]:
         container_id = container.get('id')
         container_name = _container_name_cache.get(container_id, container_id)
         
-        if container_id and container.get('status') == 'running':
+        if container_id:
+            # ✅ Obtener métricas sin importar el estado
             metrics = get_container_metrics(container_name)
             if metrics:
                 metrics_events.append({

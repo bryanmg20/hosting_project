@@ -26,6 +26,7 @@ import {
   Loader2,
   Code2,
   RotateCw,
+  Plus,
 } from 'lucide-react';
 import {
   Project,
@@ -33,8 +34,9 @@ import {
   startContainer,
   stopContainer,
   deleteProject,
-  getContainerStatus,
+  rebuildContainer,
   normalizeUrl,
+  createContainer,
 } from '../../lib/api';
 import { toast } from 'sonner@2.0.3';
 import { useSSE, ContainerStatus } from '../../lib/sse-context';
@@ -52,20 +54,8 @@ const statusConfig = {
     className: 'bg-green-500 text-white',
     dotColor: 'bg-green-500',
   },
-  paused: {
-    label: 'Paused',
-    icon: <Square className="w-4 h-4" />,
-    className: 'bg-gray-500 text-white',
-    dotColor: 'bg-gray-500',
-  },
   exited: {
     label: 'exited',
-    icon: <Square className="w-4 h-4" />,
-    className: 'bg-gray-500 text-white',
-    dotColor: 'bg-gray-500',
-  },
-  unknown: {
-    label: 'Unknown',
     icon: <Square className="w-4 h-4" />,
     className: 'bg-gray-500 text-white',
     dotColor: 'bg-gray-500',
@@ -75,6 +65,12 @@ const statusConfig = {
     icon: <Loader2 className="w-4 h-4 animate-spin" />,
     className: 'bg-yellow-500 text-white',
     dotColor: 'bg-yellow-500',
+  },
+  unknown: {
+    label: 'unknown',
+    icon: <Square className="w-4 h-4" />,
+    className: 'bg-gray-500 text-white',
+    dotColor: 'bg-gray-500',
   },
   error: {
     label: 'Error',
@@ -152,7 +148,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
     } catch (err) {
       toast.error('Failed to start container');
       // Revertir en caso de error
-      updateContainerStatus(projectId, 'stopped');
+      updateContainerStatus(projectId, 'exited');
     } finally {
       setActionLoading(false);
     }
@@ -173,6 +169,60 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
       // No necesitamos refetch
     } catch (err) {
       toast.error('Failed to stop container');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Agregar la función handleCreate (después de handleStop)
+const handleCreate = async () => {
+  if (!project) return;
+
+  try {
+    setActionLoading(true);
+    
+    // Actualizar estado optimista a "deploying"
+    updateContainerStatus(projectId, 'deploying');
+    
+    // API Call: POST /api/containers/:id/create
+    await createContainer(project.id);
+    
+    toast.success('Container created successfully');
+    
+    // El SSE actualizará el estado automáticamente
+  } catch (err) {
+    toast.error('Failed to create container');
+    // Revertir en caso de error
+    updateContainerStatus(projectId, 'unknown');
+  } finally {
+    setActionLoading(false);
+  }
+};
+
+  const handleRebuild = async () => {
+    if (!project) return;
+
+    if (!confirm('This will rebuild your container with the latest code from GitHub. Continue?')) {
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      
+      // Actualizar estado optimista a "deploying"
+      updateContainerStatus(projectId, 'deploying');
+      
+      // API Call: POST /api/containers/:id/rebuild
+      await rebuildContainer(project.id);
+      
+      toast.success('Container rebuild started');
+      
+      // El SSE actualizará el estado a "running" cuando termine
+      // No necesitamos refetch
+    } catch (err) {
+      toast.error('Failed to rebuild container');
+      // Revertir en caso de error
+      updateContainerStatus(projectId, currentStatus || 'exited');
     } finally {
       setActionLoading(false);
     }
@@ -292,64 +342,90 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {currentStatus === 'exited' || currentStatus === 'inactive' ? (
-                  <Button onClick={handleStart} disabled={actionLoading}>
-                    {actionLoading ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Play className="w-4 h-4 mr-2" />
-                    )}
-                    {currentStatus === 'inactive' ? 'Reactivate' : 'Start'}
-                  </Button>
-                ) : currentStatus === 'running' ? (
-                  <>
-                    <Button variant="outline" onClick={handleStop} disabled={actionLoading}>
-                      {actionLoading ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Square className="w-4 h-4 mr-2" />
-                      )}
-                      Stop
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={loadProject}
-                      disabled={actionLoading}
-                      title="Refresh metrics"
-                    >
-                      <RotateCw className="w-4 h-4" />
-                    </Button>
-                  </>
-                ) : currentStatus === 'error' ? (
-                  <Button onClick={handleStart} disabled={actionLoading} variant="default">
-                    {actionLoading ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <RotateCw className="w-4 h-4 mr-2" />
-                    )}
-                    Retry
-                  </Button>
-                ) : null}
+  {currentStatus === 'exited' || currentStatus === 'inactive' ? (
+    <Button onClick={handleStart} disabled={actionLoading}>
+      {actionLoading ? (
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+      ) : (
+        <Play className="w-4 h-4 mr-2" />
+      )}
+      {currentStatus === 'inactive' ? 'Reactivate' : 'Start'}
+    </Button>
+  ) : currentStatus === 'running' ? (
+    <>
+      <Button variant="outline" onClick={handleStop} disabled={actionLoading}>
+        {actionLoading ? (
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        ) : (
+          <Square className="w-4 h-4 mr-2" />
+        )}
+        Stop
+      </Button>
+      <Button
+        variant="outline"
+        onClick={loadProject}
+        disabled={actionLoading}
+        title="Refresh metrics"
+      >
+        <RotateCw className="w-4 h-4" />
+      </Button>
+    </>
+  ) : currentStatus === 'error' ? (
+    <Button onClick={handleStart} disabled={actionLoading} variant="default">
+      {actionLoading ? (
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+      ) : (
+        <RotateCw className="w-4 h-4 mr-2" />
+      )}
+      Retry
+    </Button>
+  ) : currentStatus === 'unknown' ? (
+    <Button onClick={handleCreate} disabled={actionLoading}>
+      {actionLoading ? (
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+      ) : (
+        <Plus className="w-4 h-4 mr-2" />
+      )}
+      Create Container
+    </Button>
+  ) : null}
 
-                {currentStatus === 'running' && (
-                  <Button
-                    variant="outline"
-                    onClick={() => window.open(normalizeUrl(project.url), '_blank')}
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Open
-                  </Button>
-                )}
+  {/* Rebuild solo para estado exited */}
+  {currentStatus === 'exited' && (
+    <Button
+      variant="outline"
+      onClick={handleRebuild}
+      disabled={actionLoading}
+      title="Rebuild with latest code from GitHub"
+    >
+      {actionLoading ? (
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+      ) : (
+        <RotateCw className="w-4 h-4 mr-2" />
+      )}
+      Rebuild
+    </Button>
+  )}
 
-                <Button
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={actionLoading}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </Button>
-              </div>
+  {currentStatus === 'running' && (
+    <Button
+      variant="outline"
+      onClick={() => window.open(normalizeUrl(project.url), '_blank')}
+    >
+      <ExternalLink className="w-4 h-4 mr-2" />
+      Open
+    </Button>
+  )}
+
+  <Button
+    variant="destructive"
+    onClick={handleDelete}
+    disabled={actionLoading}
+  >
+    <Trash2 className="w-4 h-4 mr-2" />
+    Delete
+  </Button>
+</div>
             </div>
           </CardHeader>
         </Card>
@@ -445,7 +521,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
                 <p className="text-muted-foreground mt-4">
                   {currentStatus === 'running'
                     ? 'Your application is accessible and serving traffic.'
-                    : currentStatus === 'stopped'
+                    : currentStatus === 'exited'
                     ? 'Start the container to make your application accessible.'
                     : currentStatus === 'deploying'
                     ? 'Your application is being deployed. This may take a few moments.'

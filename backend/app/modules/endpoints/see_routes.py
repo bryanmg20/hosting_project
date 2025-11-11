@@ -10,7 +10,6 @@ from app.modules.sse.services.containers import (
 )
 import json
 import time
-from datetime import datetime
 
 sse_bp = Blueprint('sse', __name__)
 
@@ -63,22 +62,11 @@ def sse_events():
                     container['status'] = initial_status
                     initial_statuses[container_id] = initial_status
             
-            # Bucle principal de monitoreo - CADA 3 SEGUNDOS
-            update_counter = 0
-            
             # Variables para trackear el estado anterior
             previous_statuses = initial_statuses.copy()
             previous_metrics = []
             
             while True:
-                update_counter += 1
-                
-                # Actualizar lista de contenedores cada 20 ciclos (≈1 minuto)
-                if update_counter % 20 == 0:
-                    print(f"🔄 SSE: Updating container list for {user_email}")
-                    update_user_containers(user_email)
-                    update_counter = 0
-                
                 # 1. Revisar cambios de estado REALES desde Docker
                 current_status_changes = check_container_changes(user_email)
                 
@@ -97,10 +85,11 @@ def sse_events():
                 
                 # Enviar solo los cambios nuevos
                 for change in new_status_changes:
+                    print(change, flush=True)
                     yield f"event: {change['event_type']}\n"
                     yield f"data: {json.dumps(change['data'])}\n\n"
                 
-                # 2. Enviar métricas SOLO para contenedores running y SOLO si hay cambios
+                # 2. Enviar métricas para todos los contenedores
                 current_metrics = get_containers_metrics(user_email)
                 
                 # Filtrar solo las métricas que son diferentes a las anteriores

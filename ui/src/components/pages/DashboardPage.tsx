@@ -6,7 +6,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Plus, AlertCircle, Loader2, FolderOpen } from 'lucide-react';
-import { Project, getProjects, startContainer, stopContainer, deleteProject } from '../../lib/api';
+import { Project, getProjects, startContainer, stopContainer, createContainer, deleteProject } from '../../lib/api';
 import { toast } from 'sonner@2.0.3';
 import { useSSE } from '../../lib/sse-context';
 
@@ -87,6 +87,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   };
 
+  const handleCreate = async (id: string) => {
+    try {
+      setActionLoading(id);
+      // Actualizar estado a "deploying" mientras se crea
+      updateContainerStatus(id, 'deploying');
+      
+      // API Call: POST /api/containers/:id/create
+      await createContainer(id);
+      toast.success('Container created successfully');
+      
+      // El SSE actualizará el estado a "running" o "stopped" automáticamente
+      // No necesitamos refetch completo
+    } catch (err) {
+      toast.error('Failed to create container');
+      // Revertir a unknown en caso de error
+      updateContainerStatus(id, 'unknown');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this project?')) {
       return;
@@ -98,7 +119,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       await deleteProject(id);
       toast.success('Project deleted successfully');
       await loadProjects();
-      window.location.reload();
     } catch (err) {
       toast.error('Failed to delete project');
     } finally {
@@ -169,6 +189,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 project={project}
                 onStart={handleStart}
                 onStop={handleStop}
+                onCreate={handleCreate}
                 onDelete={handleDelete}
                 onViewDetails={onViewProject}
                 loading={actionLoading === project.id}

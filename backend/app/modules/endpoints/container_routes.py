@@ -22,7 +22,7 @@ def stop_container(container_id):
         'message': f'Container {container_id} stopped successfully'
     }), 200
 
-@container_bp.route('/containers/<container_id>/restart', methods=['POST'])
+@container_bp.route('/containers/<container_id>/rebuild', methods=['POST'])
 @jwt_required()
 def restart_container(container_id):
     """Mock para reiniciar contenedor"""
@@ -31,15 +31,13 @@ def restart_container(container_id):
         'message': f'Container {container_id} restarted successfully'
     }), 200
 
-@container_bp.route('/containers/<container_id>/status', methods=['GET'])
+@container_bp.route('/containers/<container_id>/create', methods=['POST'])
 @jwt_required()
-def get_container_status(container_id):
-    """Mock para obtener estado del contenedor"""
-    import random
-    statuses = ['running', 'stopped', 'restarting']
-    status = random.choice(statuses)
-    
-    # El frontend extrae response.status directamente
+def create_container(container_id):
+    """Mock para reiniciar contenedor"""
     return jsonify({
-        'status': 'running'  # Campo directo que el frontend usa
+        'success': True,
+        'message': f'Container {container_id} created successfully'
     }), 200
+
+

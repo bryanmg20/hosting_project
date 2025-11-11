@@ -94,10 +94,10 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Marcar como sync inicial para suprimir notificaciones de contenedores
       isInitialSyncRef.current = true;
       
-      // Después de 2 segundos, permitir notificaciones normales
+      //permitir notificaciones normales
       setTimeout(() => {
         isInitialSyncRef.current = false;
-      }, 2000);
+      }, 500);
     };
 
     // Evento: Métricas actualizadas (CPU, memoria, requests)

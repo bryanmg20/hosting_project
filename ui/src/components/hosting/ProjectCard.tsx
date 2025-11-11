@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { ExternalLink, Play, Square, Trash2, Activity } from 'lucide-react';
+import { ExternalLink, Play, Square, Trash2, Activity, PackagePlus } from 'lucide-react';
 import { Project, normalizeUrl } from '../../lib/api';
 import { LiveStatusBadge } from './LiveStatusBadge';
 import { ContainerStatus, useSSE } from '../../lib/sse-context';
@@ -11,6 +11,7 @@ interface ProjectCardProps {
   project: Project;
   onStart?: (id: string) => void;
   onStop?: (id: string) => void;
+  onCreate?: (id: string) => void;
   onDelete?: (id: string) => void;
   onViewDetails?: (id: string) => void;
   loading?: boolean;
@@ -37,6 +38,11 @@ const statusConfig = {
     variant: 'destructive' as const,
     className: 'bg-red-500 hover:bg-red-600',
   },
+  unknown: {
+    label: 'Unknown',
+    variant: 'secondary' as const,
+    className: 'bg-gray-400 hover:bg-gray-500',
+  },
 };
 
 const templateConfig = {
@@ -50,90 +56,17 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   project,
   onStart,
   onStop,
+  onCreate,
   onDelete,
   onViewDetails,
   loading = false,
 }) => {
-  console.log('🔍 ProjectCard: project object:', project);
-  console.log('🔍 ProjectCard: project.id type:', typeof project.id);
-  console.log('🔍 ProjectCard: project.id value:', project.id);
-  console.log('🔍 ProjectCard: project.id as string:', String(project.id));
   const template = templateConfig[project.template];
   const { containerStatus, containerMetrics } = useSSE();
   
   // Usar estado del SSE si está disponible, sino usar el del proyecto
   const currentStatus = (containerStatus[project.id] as ContainerStatus) || (project.status as ContainerStatus);
   const currentMetrics = containerMetrics[project.id] || project.metrics;
-
-  // Debug: capturar errores en los handlers
-  const handleStart = (id: string) => {
-    console.log('🔴 ProjectCard: handleStart called for', id);
-    console.log('🔴 ProjectCard: currentStatus before start:', currentStatus);
-    console.trace('🔄 ProjectCard: handleStart stack trace');
-    
-    try {
-      onStart?.(id);
-    } catch (error) {
-      console.error('❌ ProjectCard: Error in handleStart:', error);
-      console.error('❌ ProjectCard: Error details:', {
-        projectId: id,
-        currentStatus,
-        loading
-      });
-    }
-  };
-
-  const handleStop = (id: string) => {
-    console.log('🔴 ProjectCard: handleStop called for', id);
-    console.trace('🔄 ProjectCard: handleStop stack trace');
-    
-    try {
-      onStop?.(id);
-    } catch (error) {
-      console.error('❌ ProjectCard: Error in handleStop:', error);
-    }
-  };
-
-  const handleDelete = (id: string) => {
-    console.log('🔴 ProjectCard: handleDelete called for', id);
-    console.trace('🔄 ProjectCard: handleDelete stack trace');
-    
-    try {
-      onDelete?.(id);
-    } catch (error) {
-      console.error('❌ ProjectCard: Error in handleDelete:', error);
-    }
-  };
-
-  const handleViewDetails = (id: string) => {
-    console.log('🔴 ProjectCard: handleViewDetails called for', id);
-    console.trace('🔄 ProjectCard: handleViewDetails stack trace');
-    
-    try {
-      onViewDetails?.(id);
-    } catch (error) {
-      console.error('❌ ProjectCard: Error in handleViewDetails:', error);
-    }
-  };
-
-  // Debug: log cuando el componente se renderiza
-  React.useEffect(() => {
-    console.log('🔄 ProjectCard: Component rendered for project:', project.id);
-    console.log('🔄 ProjectCard: Current status:', currentStatus);
-    console.log('🔄 ProjectCard: Loading state:', loading);
-  }, [project.id, currentStatus, loading]);
-
-  // Debug: log cuando las props cambian
-  React.useEffect(() => {
-    console.log('🔄 ProjectCard: Props updated', {
-      projectId: project.id,
-      hasOnStart: !!onStart,
-      hasOnStop: !!onStop,
-      hasOnDelete: !!onDelete,
-      hasOnViewDetails: !!onViewDetails,
-      loading
-    });
-  }, [project.id, onStart, onStop, onDelete, onViewDetails, loading]);
 
   return (
     <Card className="hover:shadow-lg transition-shadow">
@@ -149,10 +82,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 dark:text-blue-400 hover:underline mt-1 inline-flex items-center gap-1"
-              onClick={(e) => {
-                console.log('🔗 ProjectCard: External link clicked');
-                e.stopPropagation();
-              }}
+              onClick={(e) => e.stopPropagation()}
             >
               {project.url}
               <ExternalLink className="w-3 h-3" />
@@ -185,10 +115,20 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            {currentStatus === 'exited' || currentStatus === 'inactive' ? (
+            {currentStatus === 'unknown' ? (
               <Button
                 size="sm"
-                onClick={() => handleStart(project.id)}
+                onClick={() => onCreate?.(project.id)}
+                disabled={loading}
+                className="flex-1"
+              >
+                <PackagePlus className="w-4 h-4 mr-2" />
+                Create
+              </Button>
+            ) : currentStatus === 'exited' || currentStatus === 'inactive' ? (
+              <Button
+                size="sm"
+                onClick={() => onStart?.(project.id)}
                 disabled={loading}
                 className="flex-1"
               >
@@ -199,7 +139,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => handleStop(project.id)}
+                onClick={() => onStop?.(project.id)}
                 disabled={loading}
                 className="flex-1"
               >
@@ -211,7 +151,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleViewDetails(project.id)}
+              onClick={() => onViewDetails?.(project.id)}
               className="flex-1"
             >
               View Details
@@ -220,7 +160,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => handleDelete(project.id)}
+              onClick={() => onDelete?.(project.id)}
               disabled={loading}
               className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
             >

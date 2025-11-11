@@ -58,3 +58,25 @@ export const restartContainer = async (id: string): Promise<void> => {
     { requiresAuth: true }
   );
 };
+
+// ========================================
+// POST /api/containers/:id/rebuild
+// ========================================
+export const rebuildContainer = async (id: string): Promise<void> => {
+  await apiClient.post(
+    `/containers/${id}/rebuild`,
+    {},
+    { requiresAuth: true }
+  );
+};
+
+// ========================================
+// POST /api/containers/:id/create
+// ========================================
+export const createContainer = async (id: string): Promise<void> => {
+  await apiClient.post(
+    `/containers/${id}/create`,
+    {},
+    { requiresAuth: true }
+  );
+};

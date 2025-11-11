@@ -47,6 +47,8 @@ export {
   startContainer,
   stopContainer,
   restartContainer,
+  rebuildContainer,
+  createContainer,
 } from './containers';
 
 // Storage helpers (por si se necesita acceso directo)
