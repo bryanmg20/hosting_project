@@ -52,8 +52,14 @@ const statusConfig = {
     className: 'bg-green-500 text-white',
     dotColor: 'bg-green-500',
   },
-  stopped: {
-    label: 'Stopped',
+  paused: {
+    label: 'Paused',
+    icon: <Square className="w-4 h-4" />,
+    className: 'bg-gray-500 text-white',
+    dotColor: 'bg-gray-500',
+  },
+  exited: {
+    label: 'exited',
     icon: <Square className="w-4 h-4" />,
     className: 'bg-gray-500 text-white',
     dotColor: 'bg-gray-500',
@@ -286,7 +292,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {currentStatus === 'stopped' || currentStatus === 'inactive' ? (
+                {currentStatus === 'exited' || currentStatus === 'inactive' ? (
                   <Button onClick={handleStart} disabled={actionLoading}>
                     {actionLoading ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />

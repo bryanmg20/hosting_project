@@ -98,6 +98,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       await deleteProject(id);
       toast.success('Project deleted successfully');
       await loadProjects();
+      window.location.reload();
     } catch (err) {
       toast.error('Failed to delete project');
     } finally {

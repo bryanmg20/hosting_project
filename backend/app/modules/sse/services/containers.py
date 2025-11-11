@@ -31,7 +31,7 @@ def update_user_containers(user_email: str) -> bool:
                 container_url = container.get('url', '')
                 
                 # Extraer nombre del contenedor desde la URL
-                container_name = extract_container_name_from_url(container_url, container_id)
+                container_name = extract_container_name_from_url(container_url)
                 _container_name_cache[container_id] = container_name
                 container['container_name'] = container_name
             
@@ -46,19 +46,26 @@ def update_user_containers(user_email: str) -> bool:
         print(f"❌ Status: Error updating containers for {user_email}: {e}")
         return False
 
-def extract_container_name_from_url(url: str, default_id: str) -> str:
+def extract_container_name_from_url(url: str) -> str:
     """
     Extraer el nombre del contenedor desde la URL
     """
     if not url:
-        return default_id
+        return 'default_id'
     
-    container_name = url.split('.')[0]
+    # Tomar las primeras dos partes: proyecto.name → proyecto-name
+    parts = url.split('.')
+    if len(parts) >= 2:
+        container_name = f"{parts[0]}-{parts[1]}"
+    else:
+        container_name = parts[0]
+    
     container_name = re.sub(r'[^a-zA-Z0-9_-]', '', container_name)
     
-    return container_name if container_name else default_id
+    return container_name if container_name else 'default_id'
 
-def get_real_container_status(container_name: str, container_id: str) -> str:
+
+def get_real_container_status(container_name: str) -> str:
     """
     Obtener el estado REAL del contenedor desde Docker
     """
@@ -70,7 +77,7 @@ def get_real_container_status(container_name: str, container_id: str) -> str:
         )
         
         if not containers:
-            print(f"⚠️  Docker: Container {container_name} not found")
+            
             return 'unknown'
         
         # Tomar el primer contenedor que coincida
@@ -90,16 +97,24 @@ def get_real_container_status(container_name: str, container_id: str) -> str:
         print(f"❌ Error getting Docker status for {container_name}: {e}")
         return 'unknown'
 
-def get_container_metrics(container_name: str, container_id: str) -> Dict:
+def get_container_metrics(container_name: str) -> Dict:
     """
     Obtener métricas REALES del contenedor desde Docker
     Si no está running, devolver métricas vacías o None
     """
     try:
         # Verificar si el contenedor está running
-        status = get_real_container_status(container_name, container_id)
+        status = get_real_container_status(container_name)
         if status != 'running':
-            return None
+            return {
+                'cpu': 0,
+                'memory': 0,
+                'memory_usage': "0MB / 0MB",
+                'network': "0MB",
+                'requests': 0,
+                'uptime': "0h 0m",
+                'lastActivity': datetime.utcnow().isoformat() + 'Z'
+                }
         
         # SIMULAR métricas (esto es lo único que simulamos)
         return {
@@ -131,7 +146,7 @@ def check_container_changes(user_email: str) -> List[Dict]:
             continue
             
         # Obtener estado ACTUAL desde Docker REAL
-        current_status = get_real_container_status(container_name, container_id)
+        current_status = get_real_container_status(container_name)
         previous_status = container.get('status', 'unknown')
         
         # Solo si hay cambio de estado REAL
@@ -166,7 +181,7 @@ def get_containers_metrics(user_email: str) -> List[Dict]:
         container_name = _container_name_cache.get(container_id, container_id)
         
         if container_id and container.get('status') == 'running':
-            metrics = get_container_metrics(container_name, container_id)
+            metrics = get_container_metrics(container_name)
             if metrics:
                 metrics_events.append({
                     'event_type': 'metrics_updated',

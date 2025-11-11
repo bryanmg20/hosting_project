@@ -50,29 +50,25 @@ def sse_events():
             })
             yield f"data: {connected_data}\n\n"
             
-            # Enviar estado inicial de todos los contenedores
+            # Obtener estado inicial PERO NO ENVIARLO
             containers = _current_containers.get(user_email, [])
+            initial_statuses = {}
+            
+            # Guardar el estado inicial de cada contenedor
             for container in containers:
                 container_id = container.get('id')
                 container_name = container.get('container_name', container_id)
                 if container_id:
-                    initial_status = get_real_container_status(container_name, container_id)
+                    initial_status = get_real_container_status(container_name)
                     container['status'] = initial_status
-                    
-                    yield f"event: container_status_changed\n"
-                    status_data = json.dumps({
-                        'projectId': container_id,
-                        'status': initial_status,
-                        'previousStatus': initial_status,
-                        'name': container.get('name', 'Unknown'),
-                        'containerName': container_name,
-                        'url': container.get('url', ''),
-                        'timestamp': datetime.utcnow().isoformat() + 'Z'
-                    })
-                    yield f"data: {status_data}\n\n"
+                    initial_statuses[container_id] = initial_status
             
             # Bucle principal de monitoreo - CADA 3 SEGUNDOS
             update_counter = 0
+            
+            # Variables para trackear el estado anterior
+            previous_statuses = initial_statuses.copy()
+            previous_metrics = []
             
             while True:
                 update_counter += 1
@@ -84,16 +80,46 @@ def sse_events():
                     update_counter = 0
                 
                 # 1. Revisar cambios de estado REALES desde Docker
-                status_changes = check_container_changes(user_email)
-                for change in status_changes:
+                current_status_changes = check_container_changes(user_email)
+                
+                # Filtrar solo los cambios que son diferentes al estado anterior
+                new_status_changes = []
+                for change in current_status_changes:
+                    container_id = change['data'].get('projectId')
+                    current_status = change['data'].get('status')
+                    previous_status = previous_statuses.get(container_id)
+                    
+                    # Solo enviar si el estado cambió
+                    if current_status != previous_status:
+                        new_status_changes.append(change)
+                        # Actualizar el estado anterior
+                        previous_statuses[container_id] = current_status
+                
+                # Enviar solo los cambios nuevos
+                for change in new_status_changes:
                     yield f"event: {change['event_type']}\n"
                     yield f"data: {json.dumps(change['data'])}\n\n"
                 
-                # 2. Enviar métricas SOLO para contenedores running (simuladas)
-                metrics_events = get_containers_metrics(user_email)
-                for metrics_event in metrics_events:
+                # 2. Enviar métricas SOLO para contenedores running y SOLO si hay cambios
+                current_metrics = get_containers_metrics(user_email)
+                
+                # Filtrar solo las métricas que son diferentes a las anteriores
+                new_metrics = []
+                for metric in current_metrics:
+                    if metric not in previous_metrics:
+                        new_metrics.append(metric)
+                
+                # Enviar solo las métricas nuevas
+                for metrics_event in new_metrics:
                     yield f"event: {metrics_event['event_type']}\n"
                     yield f"data: {json.dumps(metrics_event['data'])}\n\n"
+                
+                # Actualizar el estado anterior de métricas
+                previous_metrics = current_metrics
+                
+                # Solo imprimir log si hay cambios
+                if new_status_changes or new_metrics:
+                    print(f"📊 SSE: Sent {len(new_status_changes)} status changes and {len(new_metrics)} metrics updates for {user_email}")
                 
                 # ESPERAR 3 SEGUNDOS entre revisiones
                 time.sleep(3)
@@ -121,7 +147,6 @@ def sse_events():
             'Access-Control-Allow-Credentials': 'true'
         }
     )
-
 
 # Endpoint para forzar actualización manual
 @sse_bp.route('/containers/refresh', methods=['POST'])

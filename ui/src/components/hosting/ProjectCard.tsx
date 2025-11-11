@@ -22,8 +22,8 @@ const statusConfig = {
     variant: 'default' as const,
     className: 'bg-green-500 hover:bg-green-600',
   },
-  stopped: {
-    label: 'Stopped',
+  exited: {
+    label: 'exited',
     variant: 'secondary' as const,
     className: 'bg-gray-500 hover:bg-gray-600',
   },
@@ -54,12 +54,86 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   onViewDetails,
   loading = false,
 }) => {
+  console.log('🔍 ProjectCard: project object:', project);
+  console.log('🔍 ProjectCard: project.id type:', typeof project.id);
+  console.log('🔍 ProjectCard: project.id value:', project.id);
+  console.log('🔍 ProjectCard: project.id as string:', String(project.id));
   const template = templateConfig[project.template];
   const { containerStatus, containerMetrics } = useSSE();
   
   // Usar estado del SSE si está disponible, sino usar el del proyecto
   const currentStatus = (containerStatus[project.id] as ContainerStatus) || (project.status as ContainerStatus);
   const currentMetrics = containerMetrics[project.id] || project.metrics;
+
+  // Debug: capturar errores en los handlers
+  const handleStart = (id: string) => {
+    console.log('🔴 ProjectCard: handleStart called for', id);
+    console.log('🔴 ProjectCard: currentStatus before start:', currentStatus);
+    console.trace('🔄 ProjectCard: handleStart stack trace');
+    
+    try {
+      onStart?.(id);
+    } catch (error) {
+      console.error('❌ ProjectCard: Error in handleStart:', error);
+      console.error('❌ ProjectCard: Error details:', {
+        projectId: id,
+        currentStatus,
+        loading
+      });
+    }
+  };
+
+  const handleStop = (id: string) => {
+    console.log('🔴 ProjectCard: handleStop called for', id);
+    console.trace('🔄 ProjectCard: handleStop stack trace');
+    
+    try {
+      onStop?.(id);
+    } catch (error) {
+      console.error('❌ ProjectCard: Error in handleStop:', error);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    console.log('🔴 ProjectCard: handleDelete called for', id);
+    console.trace('🔄 ProjectCard: handleDelete stack trace');
+    
+    try {
+      onDelete?.(id);
+    } catch (error) {
+      console.error('❌ ProjectCard: Error in handleDelete:', error);
+    }
+  };
+
+  const handleViewDetails = (id: string) => {
+    console.log('🔴 ProjectCard: handleViewDetails called for', id);
+    console.trace('🔄 ProjectCard: handleViewDetails stack trace');
+    
+    try {
+      onViewDetails?.(id);
+    } catch (error) {
+      console.error('❌ ProjectCard: Error in handleViewDetails:', error);
+    }
+  };
+
+  // Debug: log cuando el componente se renderiza
+  React.useEffect(() => {
+    console.log('🔄 ProjectCard: Component rendered for project:', project.id);
+    console.log('🔄 ProjectCard: Current status:', currentStatus);
+    console.log('🔄 ProjectCard: Loading state:', loading);
+  }, [project.id, currentStatus, loading]);
+
+  // Debug: log cuando las props cambian
+  React.useEffect(() => {
+    console.log('🔄 ProjectCard: Props updated', {
+      projectId: project.id,
+      hasOnStart: !!onStart,
+      hasOnStop: !!onStop,
+      hasOnDelete: !!onDelete,
+      hasOnViewDetails: !!onViewDetails,
+      loading
+    });
+  }, [project.id, onStart, onStop, onDelete, onViewDetails, loading]);
 
   return (
     <Card className="hover:shadow-lg transition-shadow">
@@ -75,7 +149,10 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 dark:text-blue-400 hover:underline mt-1 inline-flex items-center gap-1"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                console.log('🔗 ProjectCard: External link clicked');
+                e.stopPropagation();
+              }}
             >
               {project.url}
               <ExternalLink className="w-3 h-3" />
@@ -108,10 +185,10 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            {currentStatus === 'stopped' || currentStatus === 'inactive' ? (
+            {currentStatus === 'exited' || currentStatus === 'inactive' ? (
               <Button
                 size="sm"
-                onClick={() => onStart?.(project.id)}
+                onClick={() => handleStart(project.id)}
                 disabled={loading}
                 className="flex-1"
               >
@@ -122,7 +199,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => onStop?.(project.id)}
+                onClick={() => handleStop(project.id)}
                 disabled={loading}
                 className="flex-1"
               >
@@ -134,7 +211,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => onViewDetails?.(project.id)}
+              onClick={() => handleViewDetails(project.id)}
               className="flex-1"
             >
               View Details
@@ -143,7 +220,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => onDelete?.(project.id)}
+              onClick={() => handleDelete(project.id)}
               disabled={loading}
               className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
             >

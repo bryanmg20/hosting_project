@@ -39,6 +39,11 @@ const statusConfig = {
     className: 'bg-red-500 hover:bg-red-600 text-white',
     dotColor: 'bg-red-300',
   },
+  deploying: {
+    label: 'deploying',
+    className: 'bg-red-500 hover:bg-red-600 text-white',
+    dotColor: 'bg-red-300',
+  },
   // NUEVO: Estado inicial/desconocido
   unknown: {
     label: 'Unknown',

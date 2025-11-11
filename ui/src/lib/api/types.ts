@@ -9,9 +9,9 @@
 export interface Project {
   id: string;
   name: string;
-  status: 'running' | 'stopped' | 'deploying' | 'error';
+  status: 'running' | 'exited' | 'deploying' | 'error';
   url: string;
-  template: 'static' | 'react' | 'flask' | 'nodejs';
+  template: 'static' | 'react' | 'flask';
   github_url: string;
   created_at: string;
   metrics: {

@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from app.modules.sse.services.containers import extract_container_name_from_url, get_real_container_status
 
 def generate_project_id():
     return f"proj-{uuid.uuid4().hex[:8]}"
@@ -7,8 +8,12 @@ def generate_project_id():
 def generate_project_url(name, username):
     return f"{name}.{username}.localhost"
 
-def format_project_response(container_data, status='running'):
+def format_project_response(container_data, status = "unknown"):
     """Convierte container de Roble a formato Figma"""
+
+    container_name = extract_container_name_from_url(container_data['url'])
+    status = get_real_container_status(container_name)
+
     return {
         'id': container_data['id'],
         'name': container_data['name'],
@@ -22,7 +27,7 @@ def format_project_response(container_data, status='running'):
 
 def format_project_list(containers):
     """Convierte lista de containers a formato Figma"""
-    return [format_project_response(container, 'unknown') for container in containers]
+    return [format_project_response(container) for container in containers]
 
 def create_new_project_data(name, username, template, github_url):
     """Crea estructura de nuevo proyecto"""
