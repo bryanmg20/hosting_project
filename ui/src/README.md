@@ -15,7 +15,7 @@ Esta es una **aplicación frontend completa** construida con React, TypeScript y
 - ✅ Manejo de errores 401 y auto-logout
 - ✅ Todos los endpoints preparados con fetch real
 - ✅ SSE listo para conexión real
-- 🔧 Backend mock incluido para testing (ver `BACKEND_EXAMPLES.md`)
+
 
 **Para usar con backend real:**
 1. Configurar `VITE_API_URL` en `.env`
