@@ -49,6 +49,9 @@ export const createProject = async (
     { requiresAuth: true }
   );
 
+  // Emitir evento para que SSE se reconecte con la lista actualizada
+  window.dispatchEvent(new Event('project:created'));
+
   return response.project;
 };
 
@@ -80,6 +83,9 @@ export const deleteProject = async (id: string): Promise<void> => {
     `/projects/${id}`,
     { requiresAuth: true }
   );
+
+  // Emitir evento para que SSE se reconecte con la lista actualizada
+  window.dispatchEvent(new Event('project:deleted'));
 };
 
 // ========================================

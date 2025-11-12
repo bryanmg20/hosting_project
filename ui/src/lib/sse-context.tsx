@@ -156,7 +156,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (sseStatus === 'disconnected' && token) {
       reconnectTimeoutRef.current = setTimeout(() => {
         connectSSE();
-      }, 500); // Reintentar después de 3 segundos
+      }, 3000); // Reintentar después de 3 segundos
     }
   }, [sseStatus, connectSSE]);
 
@@ -179,7 +179,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [sseStatus, handleReconnect]);
 
-  // Escuchar eventos de logout/login para manejar conexión SSE
+  // Escuchar eventos de logout/login/project para manejar conexión SSE
   useEffect(() => {
     const handleLogout = () => {
       // Cerrar conexión SSE existente
@@ -216,14 +216,46 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       connectSSE();
     };
 
+    const handleProjectCreated = () => {
+      // Cuando se crea un proyecto, reconectar SSE para que el backend cargue la lista actualizada
+      console.log('Proyecto creado, reconectando SSE...');
+      
+      // Cerrar conexión existente
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      
+      // Reconectar inmediatamente
+      connectSSE();
+    };
+
+    const handleProjectDeleted = () => {
+      // Cuando se elimina un proyecto, reconectar SSE para que el backend actualice la lista
+      console.log('Proyecto eliminado, reconectando SSE...');
+      
+      // Cerrar conexión existente
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      
+      // Reconectar inmediatamente
+      connectSSE();
+    };
+
     window.addEventListener('auth:logout', handleLogout);
     window.addEventListener('auth:unauthorized', handleUnauthorized);
     window.addEventListener('auth:login', handleLogin);
+    window.addEventListener('project:created', handleProjectCreated);
+    window.addEventListener('project:deleted', handleProjectDeleted);
     
     return () => {
       window.removeEventListener('auth:logout', handleLogout);
       window.removeEventListener('auth:unauthorized', handleUnauthorized);
       window.removeEventListener('auth:login', handleLogin);
+      window.removeEventListener('project:created', handleProjectCreated);
+      window.removeEventListener('project:deleted', handleProjectDeleted);
     };
   }, [connectSSE]);
 
