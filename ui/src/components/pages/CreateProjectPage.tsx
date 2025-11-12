@@ -101,7 +101,7 @@ export const CreateProjectPage: React.FC<CreateProjectPageProps> = ({
       // Auto-redirect after 2 seconds
       setTimeout(() => {
         onSuccess(project.id);
-        window.location.reload();
+       
       }, 2000);
     } catch (err) {
       setDeployState('error');

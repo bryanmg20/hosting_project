@@ -67,11 +67,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     const loggedInUser = await apiLogin(email, password);
     setUser(loggedInUser);
+    // Emitir evento para que SSE se conecte
+    window.dispatchEvent(new Event('auth:login'));
   };
 
   const register = async (email: string, password: string, name: string) => {
     const registeredUser = await apiRegister(email, password, name);
     setUser(registeredUser);
+    // Emitir evento para que SSE se conecte
+    window.dispatchEvent(new Event('auth:login'));
   };
 
   // Registrar sin autenticar automáticamente

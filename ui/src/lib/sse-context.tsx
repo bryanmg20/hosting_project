@@ -94,10 +94,10 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Marcar como sync inicial para suprimir notificaciones de contenedores
       isInitialSyncRef.current = true;
       
-      //permitir notificaciones normales
+      // Después de 2 segundos, permitir notificaciones normales
       setTimeout(() => {
         isInitialSyncRef.current = false;
-      }, 500);
+      }, 2000);
     };
 
     // Evento: Métricas actualizadas (CPU, memoria, requests)
@@ -156,7 +156,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (sseStatus === 'disconnected' && token) {
       reconnectTimeoutRef.current = setTimeout(() => {
         connectSSE();
-      }, 20000); // Reintentar después de 3 segundos
+      }, 500); // Reintentar después de 3 segundos
     }
   }, [sseStatus, connectSSE]);
 
@@ -179,7 +179,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [sseStatus, handleReconnect]);
 
-  // Escuchar eventos de logout para cerrar conexión SSE
+  // Escuchar eventos de logout/login para manejar conexión SSE
   useEffect(() => {
     const handleLogout = () => {
       // Cerrar conexión SSE existente
@@ -210,14 +210,22 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       handleLogout();
     };
 
+    const handleLogin = () => {
+      // Cuando el usuario hace login, conectar SSE inmediatamente
+      console.log('Login detectado, conectando SSE...');
+      connectSSE();
+    };
+
     window.addEventListener('auth:logout', handleLogout);
     window.addEventListener('auth:unauthorized', handleUnauthorized);
+    window.addEventListener('auth:login', handleLogin);
     
     return () => {
       window.removeEventListener('auth:logout', handleLogout);
       window.removeEventListener('auth:unauthorized', handleUnauthorized);
+      window.removeEventListener('auth:login', handleLogin);
     };
-  }, []);
+  }, [connectSSE]);
 
   // OPCIONAL: Simular eventos SSE para testing sin backend
   // Descomentar estos efectos solo si necesitas testing local sin backend
