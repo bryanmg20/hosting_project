@@ -43,6 +43,8 @@ def get_projects():
 @project_bp.route('/projects', methods=['POST'])
 @jwt_required()
 def create_project():
+
+
     try:
         # Validar datos
         validation = validate_create_project_data(request.get_json())
@@ -52,6 +54,8 @@ def create_project():
         user_email = get_jwt_identity()
         claims = get_jwt()
         username = claims.get('name', 'Usuario')
+
+
         
         if not user_email:
             return error_response('User not authenticated', 401)
@@ -63,6 +67,8 @@ def create_project():
             validation['template'], 
             validation['github_url']
         )
+    
+
         
         result = container_service.add_container_to_user(
             email=user_email,

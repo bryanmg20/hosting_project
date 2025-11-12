@@ -16,7 +16,9 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister, prefilledEmail }) => {
   const { login } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [email, setEmail] = useState(prefilledEmail || '');
+  // Solo usar prefilledEmail si es un string válido y no vacío
+  const validEmail = typeof prefilledEmail === 'string' && prefilledEmail.trim() ? prefilledEmail : '';
+  const [email, setEmail] = useState(validEmail);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +31,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister, prefil
     try {
       // API Call: POST /api/auth/login
       await login(email, password);
-      window.location.reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
     } finally {
@@ -64,7 +65,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister, prefil
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {prefilledEmail && (
+            {validEmail && (
               <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-900">
                 <AlertCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                 <AlertDescription className="text-green-800 dark:text-green-200">

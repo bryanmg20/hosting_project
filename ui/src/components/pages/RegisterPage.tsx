@@ -187,7 +187,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
                 Already have an account?{' '}
                 <button
                   type="button"
-                  onClick={onSwitchToLogin}
+                  onClick={() => onSwitchToLogin('')}
                   className="text-blue-600 dark:text-blue-400 hover:underline"
                 >
                   Sign in
