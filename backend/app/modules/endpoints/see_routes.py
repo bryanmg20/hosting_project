@@ -106,17 +106,14 @@ def sse_events():
                 # Actualizar el estado anterior de métricas
                 previous_metrics = current_metrics
                 
-                # Solo imprimir log si hay cambios
-                if new_status_changes or new_metrics:
-                    print(f"📊 SSE: Sent {len(new_status_changes)} status changes and {len(new_metrics)} metrics updates for {user_email}")
-                
+    
                 # ESPERAR 3 SEGUNDOS entre revisiones
                 time.sleep(3)
                 
         except GeneratorExit:
             print(f"🔌 SSE: Client disconnected for user {user_email}")
         except Exception as e:
-            print(f"❌ SSE Error in generator for user {user_email}: {e}")
+            print(f"SSE Error in generator for user {user_email}: {e}")
             yield f"event: container_error\n"
             error_data = json.dumps({
                 'message': str(e),

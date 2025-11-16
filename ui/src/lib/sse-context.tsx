@@ -87,8 +87,8 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     eventSource.onopen = () => {
       setSseStatus('connected');
-      toast.success('Conexión SSE establecida', {
-        description: 'Actualizaciones automáticas activadas',
+      toast.success('SSE connection established', {
+        description: 'Automatic updates enabled',
       });
       
       // Marcar como sync inicial para suprimir notificaciones de contenedores
@@ -97,7 +97,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Después de 2 segundos, permitir notificaciones normales
       setTimeout(() => {
         isInitialSyncRef.current = false;
-      }, 2000);
+      }, 500);
     };
 
     // Evento: Métricas actualizadas (CPU, memoria, requests)
@@ -115,14 +115,14 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Suprimir notificaciones durante sincronización inicial (primeros 2s)
       if (data.notify !== false && !isInitialSyncRef.current) {
         const statusLabels = {
-          running: 'iniciado',
-          exited: 'detenido',
-          deploying: 'desplegando',
-          error: 'con error',
-          inactive: 'inactivo',
-          unknown: 'desconocido',
+          running: 'started',
+          exited: 'exited',
+          deploying: 'deploying',
+          error: 'error',
+          inactive: 'inactive',
+          unknown: 'inknown',
         };
-        toast.info(`Contenedor ${statusLabels[data.status as ContainerStatus] || data.status}`);
+        toast.info(`${data.name} ${statusLabels[data.status as ContainerStatus] || data.status}`);
       }
     });
 
@@ -157,7 +157,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (sseStatus === 'disconnected' && token) {
       reconnectTimeoutRef.current = setTimeout(() => {
         connectSSE();
-      }, 3000); // Reintentar después de 3 segundos
+      }, 15000); // Reintentar después de 3 segundos
     }
   }, [sseStatus, connectSSE]);
 

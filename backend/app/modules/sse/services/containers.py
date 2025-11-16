@@ -29,21 +29,25 @@ def update_user_containers(user_email: str) -> bool:
             for container in containers:
                 container_id = container.get('id')
                 container_url = container.get('url', '')
-                
+                githuburl = container.get('github_url', '')
                 # Extraer nombre del contenedor desde la URL
                 container_name = extract_container_name_from_url(container_url)
-                _container_name_cache[container_id] = container_name
-                container['container_name'] = container_name
+
+                _container_name_cache[container_id] = {
+                    "name": container_name,
+                    "githuburl": githuburl
+                }
+               
             
             _current_containers[user_email] = containers
-            print(f"🔄 Status: Updated {len(containers)} containers for user {user_email}")
+            
             return True
         else:
-            print(f"❌ Status: Failed to update containers for user {user_email}")
+           
             return False
             
     except Exception as e:
-        print(f"❌ Status: Error updating containers for {user_email}: {e}")
+        
         return False
 
 def extract_container_name_from_url(url: str) -> str:
@@ -66,9 +70,13 @@ def extract_container_name_from_url(url: str) -> str:
 
 
 def get_real_container_status(container_name: str) -> str:
+
+ 
     """
     Obtener el estado REAL del contenedor desde Docker
     """
+    print(_container_name_cache, flush=True)
+
     try:
         # Buscar el contenedor por nombre en Docker
         containers = docker_client.containers.list(
@@ -84,17 +92,17 @@ def get_real_container_status(container_name: str) -> str:
         container = containers[0]
         status = container.status.lower()
         
-        print(f"🔍 Docker: Container {container_name} status: {status}")
+     
         return status
         
     except docker.errors.NotFound:
-        print(f"⚠️  Docker: Container {container_name} not found")
+       
         return 'unknown'
     except docker.errors.APIError as e:
-        print(f"❌ Docker API Error for {container_name}: {e}")
+     
         return 'unknown'
     except Exception as e:
-        print(f"❌ Error getting Docker status for {container_name}: {e}")
+       
         return 'unknown'
 
 def get_container_metrics(container_name: str) -> Dict:
@@ -123,7 +131,7 @@ def get_container_metrics(container_name: str) -> Dict:
         }
         
     except Exception as e:
-        print(f"❌ Error getting metrics for {container_name}: {e}")
+      
         return {
             'cpu': 0,
             'memory': 0,
@@ -141,7 +149,7 @@ def check_container_changes(user_email: str, previous_statuses: Dict[str, str] =
     
     for container in containers:
         container_id = container.get('id')
-        container_name = _container_name_cache.get(container_id, container_id)
+        container_name = _container_name_cache.get(container_id, container_id).get('name', container_id)
         
         if not container_id:
             continue
@@ -157,7 +165,7 @@ def check_container_changes(user_email: str, previous_statuses: Dict[str, str] =
         
         # Solo si hay cambio de estado REAL
         if previous_status != current_status:
-            print(f"🔄 check_container_changes: Status changed for {container_id}: {previous_status} -> {current_status}")
+        
 
             changes.append({
                 'event_type': 'container_status_changed',
@@ -190,7 +198,7 @@ def get_containers_metrics(user_email: str) -> List[Dict]:
     
     for container in containers:
         container_id = container.get('id')
-        container_name = _container_name_cache.get(container_id, container_id)
+        container_name = _container_name_cache.get(container_id, container_id).get('name', container_id)
         
         if container_id:
             # ✅ Obtener métricas sin importar el estado

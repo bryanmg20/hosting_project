@@ -49,7 +49,6 @@ class ContainerService(UserService):
     project_id: str,
     name: str,
     url: str,
-    template: str,
     github_url: str,
     created: str
 ) -> dict:
@@ -69,7 +68,6 @@ class ContainerService(UserService):
                 'id': project_id,
                 'name': name,
                 'url': url,
-                'template': template,
                 'github_url': github_url,
                 'created_at': created
             }
