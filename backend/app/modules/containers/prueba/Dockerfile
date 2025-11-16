@@ -7,8 +7,8 @@ WORKDIR /app
 # Copia el archivo package.json y package-lock.json (si existe)
 COPY package*.json ./
 
-# Instala las dependencias
-RUN npm install
+# Instala las dependencias (usa npm install si no hay package-lock.json)
+RUN if [ -f package-lock.json ]; then npm ci --only=production; else npm install --only=production; fi
 
 # Copia el código fuente
 COPY . .

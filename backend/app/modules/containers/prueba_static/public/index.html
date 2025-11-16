@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plantilla Estática Dockerizada</title>
+  <meta name="description" content="Sitio estático HTML + CSS + JS servido con Nginx dentro de Docker.">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <h1>🚀 Sitio Estático</h1>
+      <nav>
+        <a href="#features">Características</a>
+        <a href="#about">Acerca</a>
+        <a href="#contact">Contacto</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero container">
+      <h2>Plantilla dockerizada lista para producción</h2>
+      <p>HTML + CSS + JS servido por Nginx con políticas de caché, gzip y cabeceras de seguridad</p>
+      <button id="cta">Probar interacción</button>
+    </section>
+
+    <section id="features" class="features container">
+      <article>
+        <h3>Docker + Nginx</h3>
+        <p>Empaquetado ligero con nginx:alpine, configuración limpia y lista para desplegar</p>
+      </article>
+      <article>
+        <h3>Mejores prácticas</h3>
+        <p>Compresión gzip, cacheo de assets, CSP básica y headers de seguridad</p>
+      </article>
+      <article>
+        <h3>Sencillo y extensible</h3>
+        <p>Estructura mínima para crecer hacia SPA o landing pages</p>
+      </article>
+    </section>
+
+    <section id="about" class="container">
+      <h3>Acerca</h3>
+      <p>Esta plantilla fue creada para iniciar rápido proyectos estáticos y desplegarlos con contenedores</p>
+    </section>
+
+    <section id="contact" class="container">
+      <h3>Contacto</h3>
+      <p>¿Sugerencias o dudas? Edita <code>public/index.html</code> y ¡listo!</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <small>&copy; <span id="year"></span> Tu Proyecto. Todos los derechos reservados.</small>
+    </div>
+  </footer>
+</body>
+</html>
