@@ -1,6 +1,5 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { ExternalLink, Play, Square, Trash2, Activity, PackagePlus } from 'lucide-react';
 import { Project, normalizeUrl } from '../../lib/api';
@@ -24,7 +23,7 @@ const statusConfig = {
     className: 'bg-green-500 hover:bg-green-600',
   },
   exited: {
-    label: 'exited',
+    label: 'Exited',
     variant: 'secondary' as const,
     className: 'bg-gray-500 hover:bg-gray-600',
   },
@@ -45,13 +44,6 @@ const statusConfig = {
   },
 };
 
-const templateConfig = {
-  static: { label: 'Static', color: 'bg-blue-100 text-blue-800' },
-  react: { label: 'React', color: 'bg-cyan-100 text-cyan-800' },
-  flask: { label: 'Flask', color: 'bg-purple-100 text-purple-800' },
-  nodejs: { label: 'Node.js', color: 'bg-green-100 text-green-800' },
-};
-
 export const ProjectCard: React.FC<ProjectCardProps> = ({
   project,
   onStart,
@@ -61,7 +53,6 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   onViewDetails,
   loading = false,
 }) => {
-  const template = templateConfig[project.template];
   const { containerStatus, containerMetrics } = useSSE();
   
   // Usar estado del SSE si está disponible, sino usar el del proyecto
@@ -88,9 +79,6 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>
-          <Badge variant="outline" className={template.color}>
-            {template.label}
-          </Badge>
         </div>
       </CardHeader>
       <CardContent>

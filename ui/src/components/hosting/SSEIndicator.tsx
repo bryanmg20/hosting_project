@@ -42,7 +42,7 @@ const statusConfig: Record<SSEStatus, {
 const sseEvents = [
   {
     name: 'container_status_changed',
-    description: 'Cuando cambia estado running/stopped',
+    description: 'Cuando cambia estado running/exited',
     color: 'text-blue-600 dark:text-blue-400',
   },
   {

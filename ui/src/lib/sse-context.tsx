@@ -9,11 +9,11 @@
  * - Reconexión automática si se pierde la conexión
  * - Frecuencia de updates manejada internamente por el backend
  * - Connection status indicator (connecting, connected, disconnected)
- * - Container status tracking (running, stopped, deploying, inactive, error)
+ * - Container status tracking (running, exited, deploying, inactive, error)
  * - Toast notifications for status changes
  * 
  * SSE EVENTS:
- * - container_status_changed: Cuando cambia estado running/stopped
+ * - container_status_changed: Cuando cambia estado running/exited
  * - metrics_updated: Métricas cada X tiempo definido internamente
  * - auto_shutdown: Cuando se apaga por inactividad
  * 
@@ -32,7 +32,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { toast } from 'sonner@2.0.3';
 import { getAuthToken } from './api';
 
-export type ContainerStatus = 'running' | 'stopped' | 'deploying' | 'inactive' | 'error';
+export type ContainerStatus = 'running' | 'exited' | 'deploying' | 'inactive' | 'error' | 'unknown';
 
 export interface ContainerMetrics {
   cpu: number;
@@ -106,7 +106,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setContainerMetrics(prev => ({ ...prev, [data.projectId]: data.metrics }));
     });
 
-    // Evento: Estado del contenedor cambió (running, stopped, deploying, etc.)
+    // Evento: Estado del contenedor cambió (running, exited, deploying, etc.)
     eventSource.addEventListener('container_status_changed', (event) => {
       const data = JSON.parse(event.data);
       setContainerStatus(prev => ({ ...prev, [data.projectId]: data.status }));
@@ -116,10 +116,11 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (data.notify !== false && !isInitialSyncRef.current) {
         const statusLabels = {
           running: 'iniciado',
-          stopped: 'detenido',
+          exited: 'detenido',
           deploying: 'desplegando',
           error: 'con error',
           inactive: 'inactivo',
+          unknown: 'desconocido',
         };
         toast.info(`Contenedor ${statusLabels[data.status as ContainerStatus] || data.status}`);
       }
@@ -156,7 +157,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (sseStatus === 'disconnected' && token) {
       reconnectTimeoutRef.current = setTimeout(() => {
         connectSSE();
-      }, 15000); // Reintentar después de 3 segundos
+      }, 3000); // Reintentar después de 3 segundos
     }
   }, [sseStatus, connectSSE]);
 
