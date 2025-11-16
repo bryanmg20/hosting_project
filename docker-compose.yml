@@ -2,10 +2,6 @@ services:
   backend:
     build: ./backend
     environment:
-      - FLASK_APP
-      - FLASK_ENV
-      - SECRET_KEY
-      - JWT_SECRET_KEY
       - ROBLE_DB_NAME
     volumes:
       - ./backend:/app

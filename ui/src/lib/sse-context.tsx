@@ -88,7 +88,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     eventSource.onopen = () => {
       setSseStatus('connected');
       toast.success('SSE connection established', {
-        description: 'Automatic updates enabled',
+        description: '',
       });
       
       // Marcar como sync inicial para suprimir notificaciones de contenedores
@@ -138,8 +138,8 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     eventSource.onerror = () => {
       setSseStatus('disconnected');
       eventSource.close();
-      toast.error('Conexión SSE perdida', {
-        description: 'Reintentando conexión...',
+      toast.error('Lost connection SSE', {
+        description: 'retrying connection...',
       });
     };
 

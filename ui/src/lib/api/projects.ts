@@ -35,12 +35,10 @@ export const getProjects = async (): Promise<Project[]> => {
 export const createProject = async (
   name: string,
   githubUrl: string,
-  template: Project['template']
 ): Promise<Project> => {
   const requestData: CreateProjectRequest = {
     name,
     github_url: githubUrl,
-    template,
   };
 
   const response = await apiClient.post<CreateProjectResponse>(

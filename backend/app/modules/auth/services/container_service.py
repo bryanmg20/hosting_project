@@ -78,6 +78,11 @@ class ContainerService(UserService):
                 return containers_result
 
             existing_containers = containers_result['containers']
+
+            for container in existing_containers:
+                if container.get('name')== name:
+                    return {'success': False, 'error': 'Container with the same name already exists'}
+
             existing_containers.append(new_container)
 
             # 4. Preparar actualización

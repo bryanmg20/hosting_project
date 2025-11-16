@@ -15,6 +15,7 @@ def get_projects():
     Obtener todos los proyectos del usuario autenticado
     """
     try:
+
         # 1. Obtener usuario autenticado
         user_email = get_jwt_identity()
         

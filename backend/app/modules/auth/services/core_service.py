@@ -61,6 +61,7 @@ class AuthCoreService:
         access_token = create_access_token(identity=email, additional_claims=additional_claims)
         refresh_token = create_refresh_token(identity=email, additional_claims=additional_claims)
         
+        
         return {
             'success': True,
             'access_token': access_token,

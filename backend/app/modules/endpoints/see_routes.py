@@ -16,17 +16,14 @@ sse_bp = Blueprint('sse', __name__)
 @sse_bp.route('/containers/events')
 def sse_events():
     """SSE endpoint para eventos en tiempo real - consulta Docker real"""
-    
     token = request.args.get('token')
     if not token:
         return "Token required", 401
-    
     try:
         decoded_token = decode_token(token)
         user_email = decoded_token['sub']
-        print(f"✅ SSE: Connected user {user_email}")
+
     except Exception as e:
-        print(f"❌ SSE: Invalid token - {e}")
         return "Invalid token", 401
     
     def generate_events():
@@ -39,6 +36,7 @@ def sse_events():
                     'error_code': 'CONTAINERS_FETCH_ERROR'
                 })
                 yield f"data: {error_data}\n\n"
+                
                 return
             
             # Evento de conexión exitosa
@@ -85,7 +83,7 @@ def sse_events():
                 
                 # Enviar solo los cambios nuevos
                 for change in new_status_changes:
-                    print(change, flush=True)
+                    #print(change, flush=True)
                     yield f"event: {change['event_type']}\n"
                     yield f"data: {json.dumps(change['data'])}\n\n"
                 
@@ -108,10 +106,10 @@ def sse_events():
                 
     
                 # ESPERAR 3 SEGUNDOS entre revisiones
-                time.sleep(3)
+                time.sleep(2)
                 
         except GeneratorExit:
-            print(f"🔌 SSE: Client disconnected for user {user_email}")
+            print(f"SSE: Client disconnected for user {user_email}")
         except Exception as e:
             print(f"SSE Error in generator for user {user_email}: {e}")
             yield f"event: container_error\n"
@@ -161,10 +159,29 @@ def refresh_containers():
 
 @sse_bp.route('/containers/events', methods=['OPTIONS'])
 def sse_options():
-    """Handle preflight requests"""
-    return '', 200, {
-        'Access-Control-Allow-Origin': '*',
+    """Handle preflight requests with proper validation"""
+    
+    # Configuración desde variables de entorno
+    allowed_origins = 'http://ui.localhost' #current_app.config.get('CORS_ALLOWED_ORIGINS', [])
+    origin = request.headers.get('Origin', '')
+    
+    # Validar origen
+    if origin not in allowed_origins:
+        return 'Origin not allowed', 403, {
+            'Access-Control-Allow-Origin': 'null'  # Origen no permitido
+        }
+    
+    # Validar método
+    if request.method != 'OPTIONS':
+        return 'Method not allowed', 405
+    
+    headers = {
+        'Access-Control-Allow-Origin': origin,
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Credentials': 'true'
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Max-Age': '86400',  # Cache por 24h
     }
+
+    
+    return '', 200, headers
