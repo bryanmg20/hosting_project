@@ -31,7 +31,7 @@ const templates: Array<{
     description: 'Static websites with vanilla JavaScript',
     icon: <Code2 className="w-8 h-8" />,
     color: 'border-blue-500 bg-blue-50 dark:bg-blue-950 dark:border-blue-700',
-    githubUrl: 'https://github.com/clouddeploy-templates/html-static',
+    githubUrl: 'https://github.com/SRicardo05/Plantilla_Static',
   },
   {
     id: 'react',
@@ -39,7 +39,7 @@ const templates: Array<{
     description: 'React apps with modern build tools',
     icon: <Rocket className="w-8 h-8" />,
     color: 'border-cyan-500 bg-cyan-50 dark:bg-cyan-950 dark:border-cyan-700',
-    githubUrl: 'https://github.com/clouddeploy-templates/react-app',
+    githubUrl: 'https://github.com/SRicardo05/Plantilla_React',
   },
   {
     id: 'flask',
@@ -47,7 +47,7 @@ const templates: Array<{
     description: 'Python Flask web applications',
     icon: <Flame className="w-8 h-8" />,
     color: 'border-purple-500 bg-purple-50 dark:bg-purple-950 dark:border-purple-700',
-    githubUrl: 'https://github.com/clouddeploy-templates/flask-backend',
+    githubUrl: 'https://github.com/SRicardo05/Plantilla_Flask',
   },
 ];
 
