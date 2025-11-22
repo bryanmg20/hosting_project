@@ -97,7 +97,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Después de 2 segundos, permitir notificaciones normales
       setTimeout(() => {
         isInitialSyncRef.current = false;
-      }, 500);
+      }, 2000);
     };
 
     // Evento: Métricas actualizadas (CPU, memoria, requests)

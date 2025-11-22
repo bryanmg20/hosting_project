@@ -14,8 +14,8 @@ def format_project_response(container_data, status = "unknown"):
     container_name = extract_container_name_from_url(container_data['url'])
     status = get_real_container_status(container_name)
     return {
-        'id': container_data['id'],
-        'name': container_data['name'],
+        'id': container_data['_id'],
+        'name': container_data['project_name'],
         'status': status,
         'url': container_data['url'],
         'github_url': container_data['github_url'],
@@ -29,12 +29,11 @@ def format_project_list(containers):
 
 def create_new_project_data(name, username, github_url):
     """Crea estructura de nuevo proyecto"""
-    project_id = generate_project_id()
+    #project_id = generate_project_id()
     project_url = generate_project_url(name, username)
     created = datetime.utcnow().isoformat() + 'Z'
     
     return {
-        'id': project_id,
         'name': name,
         'status': 'unknown',
         'url': project_url,

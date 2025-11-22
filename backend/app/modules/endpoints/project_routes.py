@@ -68,16 +68,16 @@ def create_project():
             validation['github_url']
         )
     
-
         
         result = container_service.add_container_to_user(
-            email=user_email,
-            project_id=project_data['id'],
-            name=project_data['name'],
-            url=project_data['url'],
-            github_url=project_data['github_url'],
-            created=project_data['created_at']
-        )
+        email=user_email,
+        name=project_data['name'],
+        url=project_data['url'],
+        github_url=project_data['github_url'],
+        created_time=project_data['created_at']
+     )
+    
+
         
         if not result['success']:
             return error_response(f'Failed to create project: {result.get("error")}', 500)
@@ -117,79 +117,12 @@ def delete_project(project_id):
         if not user_email:
             return error_response('User not authenticated', 401)
         
-        # 1. Verificar que el proyecto existe y pertenece al usuario
-        project_result = container_service.get_container_by_id(user_email, project_id)
+        project_result = container_service.delete_project(user_email, project_id)
+
         if not project_result['success']:
             return error_response('Project not found', 404)
-        
-        # 2. Obtener todos los contenedores y filtrar el que se elimina
-        containers_result = container_service.get_user_containers(user_email)
-        if not containers_result['success']:
-            return error_response('Failed to fetch user projects', 500)
-        
-        containers = containers_result.get('containers', [])
-        updated_containers = [container for container in containers if container.get('id') != project_id]
-        
-        # 3. Actualizar la lista de contenedores en Roble
-        update_result = container_service.update_user_containers(user_email, updated_containers)
-        if not update_result['success']:
-            return error_response(f'Failed to delete project: {update_result.get("error")}', 500)
         
         return success_response(None, 'Project deleted successfully', 200)
-        
-    except Exception as e:
-        return error_response('Internal server error', 500)
-    
-
-#mock status project
-
-@project_bp.route('/projects/<project_id>/status', methods=['PATCH'])
-@jwt_required()
-def update_project_status(project_id):
-    """
-    Actualizar el estado de un proyecto específico
-    Mock endpoint - siempre devuelve éxito con el estado actualizado
-    """
-    try:
-        user_email = get_jwt_identity()
-        
-        if not user_email:
-            return error_response('User not authenticated', 401)
-        
-        # 1. Obtener datos de la petición
-        request_data = request.get_json()
-        if not request_data or 'status' not in request_data:
-            return error_response('Status is required', 400)
-        
-        new_status = request_data['status']
-        
-        # 2. Validar que el estado sea permitido
-        valid_statuses = ['stopped', 'deploying', 'running', 'error']
-        if new_status not in valid_statuses:
-            return error_response(f'Invalid status. Must be one of: {valid_statuses}', 400)
-        
-        # 3. Verificar que el proyecto existe y pertenece al usuario
-        project_result = container_service.get_container_by_id(user_email, project_id)
-        if not project_result['success']:
-            return error_response('Project not found', 404)
-        
-        # 4. MOCK: Simular actualización exitosa
-        # En una implementación real, aquí actualizarías la base de datos
-        current_project = project_result['container']
-        
-        # Crear respuesta mock con el proyecto actualizado
-        updated_project = {
-            **current_project,
-            'status': new_status,
-            'updated_at': datetime.utcnow().isoformat() + 'Z'
-        }
-        
-        # 5. Retornar respuesta mock exitosa
-        return success_response(
-            data={'project': updated_project},
-            message=f'Project status updated to {new_status}',
-            status_code=200
-        )
         
     except Exception as e:
         return error_response('Internal server error', 500)

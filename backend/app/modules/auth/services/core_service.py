@@ -25,8 +25,8 @@ class AuthCoreService:
         self.user_service.store_roble_tokens(email, roble_access_token, roble_refresh_token)
         
         # 4. Crear usuario en tabla
-        user_table_data = {'user': name, 'email': email, 'containers': []}
-        self.user_service.create_user_in_table(roble_access_token, user_table_data)
+        #user_table_data = {'user': name, 'email': email, 'containers': []}
+        #self.user_service.create_user_in_table(roble_access_token, user_table_data)
         
         # 5. Generar JWT tokens
         additional_claims = {'name': name, 'email': email}

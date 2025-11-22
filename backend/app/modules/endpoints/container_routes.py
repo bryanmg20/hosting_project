@@ -34,10 +34,9 @@ def restart_container(container_id):
 @container_bp.route('/containers/<container_id>/create', methods=['POST'])
 @jwt_required()
 def create_container(container_id):
+ 
     """Mock para reiniciar contenedor"""
     return jsonify({
         'success': True,
         'message': f'Container {container_id} created successfully'
     }), 200
-
-
