@@ -113,7 +113,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                 <PackagePlus className="w-4 h-4 mr-2" />
                 Create
               </Button>
-            ) : currentStatus === 'exited' || currentStatus === 'inactive' ? (
+            ) : currentStatus === 'exited' || currentStatus === 'inactive' || currentStatus === 'created' ? (
               <Button
                 size="sm"
                 onClick={() => onStart?.(project.id)}

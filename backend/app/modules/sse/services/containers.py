@@ -91,6 +91,9 @@ def get_real_container_status(container_name: str) -> str:
         # Tomar el primer contenedor que coincida
         container = containers[0]
         status = container.status.lower()
+        # Normalizar estados para la UI
+        if status == 'created':
+            status = 'inactive'  # contenedor existe pero no está iniciado
         
      
         return status
