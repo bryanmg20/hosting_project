@@ -7,15 +7,46 @@
 
 # Frontend
 http://ui.localhost {
-    reverse_proxy ui:3000
+    # Headers para deshabilitar cache
+    header {
+        Cache-Control "no-cache, no-store, must-revalidate"
+        Pragma "no-cache"
+        Expires "0"
+        -Etag
+        -Last-Modified
+    }
+    
+    reverse_proxy ui:3000 {
+        flush_interval -1
+    }
 }
 
 # Backend principal
 http://api.localhost {
-    reverse_proxy backend:5000
+    # Headers para deshabilitar cache en API
+    header {
+        Cache-Control "no-cache, no-store, must-revalidate"
+        Pragma "no-cache"
+        Expires "0"
+    }
+    
+    reverse_proxy backend:5000 {
+        flush_interval -1
+    }
 }
 
 # Cualquier otro subdominio redirige al backend por defecto
 http://*.*.localhost {
-    reverse_proxy backend:5000
+    # Headers para deshabilitar cache
+    header {
+        Cache-Control "no-cache, no-store, must-revalidate"
+        Pragma "no-cache"
+        Expires "0"
+        -Etag
+        -Last-Modified
+    }
+    
+    reverse_proxy backend:5000 {
+        flush_interval -1
+    }
 }

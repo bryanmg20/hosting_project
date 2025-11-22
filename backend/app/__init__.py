@@ -15,7 +15,9 @@ def create_app():
     app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
     app.config['ROBLE_DB_NAME'] = os.environ.get('ROBLE_DB_NAME', 'Null')
     
-    CORS(app, resources={r"/*": {"origins": "*"}})
+    # CORS: permitir específicamente ui.localhost y opcionalmente credenciales
+    allowed_origins = ["http://ui.localhost", "http://localhost:3000"]
+    CORS(app, resources={r"/*": {"origins": allowed_origins}}, supports_credentials=True)
     
     # Inicializar JWT
     jwt = JWTManager(app)

@@ -63,8 +63,7 @@ def create_project():
         # Crear proyecto en Roble
         project_data = create_new_project_data(
             validation['name'], 
-            username, 
-            validation['template'], 
+            username,  
             validation['github_url']
         )
     
@@ -75,7 +74,6 @@ def create_project():
             project_id=project_data['id'],
             name=project_data['name'],
             url=project_data['url'],
-            template=project_data['template'],
             github_url=project_data['github_url'],
             created=project_data['created_at']
         )

@@ -9,9 +9,8 @@
 export interface Project {
   id: string;
   name: string;
-  status: 'running' | 'exited' | 'deploying' | 'error';
+  status: 'running' | 'exited' | 'deploying' | 'error' | 'unknown';
   url: string;
-  template: 'static' | 'react' | 'flask';
   github_url: string;
   created_at: string;
   metrics: {
@@ -63,7 +62,6 @@ export interface MeResponse {
 export interface CreateProjectRequest {
   name: string;
   github_url: string;
-  template: Project['template'];
 }
 
 export interface CreateProjectResponse {

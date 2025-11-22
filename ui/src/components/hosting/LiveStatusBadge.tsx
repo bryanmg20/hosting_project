@@ -14,23 +14,17 @@ const statusConfig = {
     dotColor: 'bg-green-300',
   },
   exited: {
-    label: 'Exited', 
+    label: 'Exited',
     className: 'bg-gray-500 hover:bg-gray-600 text-white',
     dotColor: 'bg-gray-300',
   },
-  // NUEVO: Estado que envía tu backend
-  restarting: {
-    label: 'Restarting',
-    className: 'bg-blue-500 hover:bg-blue-600 text-white',
-    dotColor: 'bg-blue-300',
+  deploying: {
+    label: 'Deploying',
+    className: 'bg-yellow-500 hover:bg-yellow-600 text-white',
+    dotColor: 'bg-yellow-300',
   },
   inactive: {
     label: 'Inactive',
-    className: 'bg-gray-400 hover:bg-gray-500 text-white',
-    dotColor: 'bg-gray-200',
-  },
-  paused: {
-    label: 'Paused',
     className: 'bg-gray-400 hover:bg-gray-500 text-white',
     dotColor: 'bg-gray-200',
   },
@@ -39,12 +33,6 @@ const statusConfig = {
     className: 'bg-red-500 hover:bg-red-600 text-white',
     dotColor: 'bg-red-300',
   },
-  deploying: {
-    label: 'deploying',
-    className: 'bg-red-500 hover:bg-red-600 text-white',
-    dotColor: 'bg-red-300',
-  },
-  // NUEVO: Estado inicial/desconocido
   unknown: {
     label: 'Unknown',
     className: 'bg-gray-400 hover:bg-gray-500 text-white',
@@ -57,7 +45,7 @@ export const LiveStatusBadge: React.FC<LiveStatusBadgeProps> = ({
   showAnimation = true 
 }) => {
   const config = statusConfig[status];
-  const shouldAnimate = showAnimation && (status === 'running' || status === 'restarting');
+  const shouldAnimate = showAnimation && (status === 'running' || status === 'deploying');
 
   return (
     <Badge className={`${config.className} flex items-center gap-1.5`}>

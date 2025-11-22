@@ -63,8 +63,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       // No necesitamos refetch completo
     } catch (err) {
       toast.error('Failed to start container');
-      // Revertir a stopped en caso de error
-      updateContainerStatus(id, 'stopped');
+      // Revertir a exited en caso de error
+      updateContainerStatus(id, 'exited');
     } finally {
       setActionLoading(null);
     }
@@ -78,7 +78,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       await stopContainer(id);
       toast.success('Container stopped successfully');
       
-      // El SSE actualizará el estado a "stopped" automáticamente
+      // El SSE actualizará el estado a "exited" automáticamente
       // No necesitamos refetch completo
     } catch (err) {
       toast.error('Failed to stop container');
@@ -97,7 +97,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       await createContainer(id);
       toast.success('Container created successfully');
       
-      // El SSE actualizará el estado a "running" o "stopped" automáticamente
+      // El SSE actualizará el estado a "running" o "exited" automáticamente
       // No necesitamos refetch completo
     } catch (err) {
       toast.error('Failed to create container');
