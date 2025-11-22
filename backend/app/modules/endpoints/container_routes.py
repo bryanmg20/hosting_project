@@ -134,7 +134,7 @@ def create_container(container_id):
     print(f"[CREATE] Creando contenedor para image_id={image.id}", flush=True)
     try:
         create_kwargs = payload.get('createOptions') or {}
-        container_obj = docker_client.containers.create(image.id, name=container_name, **create_kwargs)
+        container_obj = docker_client.containers.create(image.id, name=container_name, network='app-network',  **create_kwargs)
         print(f"[CREATE] Contenedor creado id={container_obj.id}", flush=True)
     except docker_errors.APIError as e:
         print(f"[CREATE][ERROR] Docker API error (create): {e}", flush=True)

@@ -75,7 +75,6 @@ def get_real_container_status(container_name: str) -> str:
     """
     Obtener el estado REAL del contenedor desde Docker
     """
-    print(_container_name_cache, flush=True)
 
     try:
         # Buscar el contenedor por nombre en Docker
