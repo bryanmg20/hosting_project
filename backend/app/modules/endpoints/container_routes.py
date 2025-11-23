@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required
 import os
 import tempfile
 import subprocess
+import shutil
 from docker import errors as docker_errors
 from app.modules.sse.services.containers import _container_name_cache, docker_client
 container_bp = Blueprint('container', __name__)
@@ -271,74 +272,84 @@ def create_container(container_id):
             'message': f'Ruta de build inválida: {context_path}'
         }), 400
 
-    # Construir imagen
-    print(f"[CREATE] Iniciando build container_id={container_id} name={container_name} context={context_path}", flush=True)
+    # Construir imagen y limpiar tmp_dir tras build
     try:
-        image, build_logs = docker_client.images.build(
-            path=context_path,
-            tag=container_name,
-            rm=True,
-            buildargs=build_args
-        )
-        print(f"[CREATE] Build OK image_id={image.id}", flush=True)
-    except docker_errors.BuildError as e:
-        print(f"[CREATE][ERROR] BuildError: {e}", flush=True)
-        return jsonify({
-            'success': False,
-            'error': 'image_build_error',
-            'message': str(e)
-        }), 500
-    except docker_errors.APIError as e:
-        print(f"[CREATE][ERROR] Docker API error (build): {e}", flush=True)
-        return jsonify({
-            'success': False,
-            'error': 'docker_api_error',
-            'message': str(e)
-        }), 500
+        print(f"[CREATE] Iniciando build container_id={container_id} name={container_name} context={context_path}", flush=True)
+        try:
+            image, build_logs = docker_client.images.build(
+                path=context_path,
+                tag=container_name,
+                rm=True,
+                buildargs=build_args
+            )
+            print(f"[CREATE] Build OK image_id={image.id}", flush=True)
+        except docker_errors.BuildError as e:
+            print(f"[CREATE][ERROR] BuildError: {e}", flush=True)
+            return jsonify({
+                'success': False,
+                'error': 'image_build_error',
+                'message': str(e)
+            }), 500
+        except docker_errors.APIError as e:
+            print(f"[CREATE][ERROR] Docker API error (build): {e}", flush=True)
+            return jsonify({
+                'success': False,
+                'error': 'docker_api_error',
+                'message': str(e)
+            }), 500
 
-    # Remover contenedor previo con mismo nombre
-    try:
-        existing = docker_client.containers.list(all=True, filters={'name': container_name})
-        for c in existing:
+        # Remover contenedor previo con mismo nombre
+        try:
+            existing = docker_client.containers.list(all=True, filters={'name': container_name})
+            for c in existing:
+                try:
+                    c.remove(force=True)
+                except Exception:
+                    pass
+        except docker_errors.APIError:
+            # No bloquea creación si falla listado
+            pass
+
+        # Crear (pero NO iniciar) nuevo contenedor
+        print(f"[CREATE] Creando contenedor para image_id={image.id}", flush=True)
+        try:
+            create_kwargs = payload.get('createOptions') or {}
+            container_obj = docker_client.containers.create(image.id, name=container_name, network='app-network',  **create_kwargs)
+            print(f"[CREATE] Contenedor creado id={container_obj.id}", flush=True)
+        except docker_errors.APIError as e:
+            print(f"[CREATE][ERROR] Docker API error (create): {e}", flush=True)
+            return jsonify({
+                'success': False,
+                'error': 'docker_api_error',
+                'message': str(e)
+            }), 500
+        except Exception as e:
+            print(f"[CREATE][ERROR] Exception creando contenedor: {e}", flush=True)
+            return jsonify({
+                'success': False,
+                'error': 'container_create_error',
+                'message': str(e)
+            }), 500
+
+        return jsonify({
+            'success': True,
+            'message': f'Container {container_id} creado (no iniciado)',
+            'data': {
+                'containerId': container_id,
+                'dockerName': container_name,
+                'imageId': image.id,
+                'createdContainerId': container_obj.id,
+                'started': False,
+                'repoUrl': repo_url or None
+            }
+        }), 201
+    
+    finally:
+        # Limpiar directorio temporal clonado (si existe)
+        if tmp_dir and os.path.isdir(tmp_dir):
             try:
-                c.remove(force=True)
-            except Exception:
-                pass
-    except docker_errors.APIError:
-        # No bloquea creación si falla listado
-        pass
-
-    # Crear (pero NO iniciar) nuevo contenedor
-    print(f"[CREATE] Creando contenedor para image_id={image.id}", flush=True)
-    try:
-        create_kwargs = payload.get('createOptions') or {}
-        container_obj = docker_client.containers.create(image.id, name=container_name, network='app-network',  **create_kwargs)
-        print(f"[CREATE] Contenedor creado id={container_obj.id}", flush=True)
-    except docker_errors.APIError as e:
-        print(f"[CREATE][ERROR] Docker API error (create): {e}", flush=True)
-        return jsonify({
-            'success': False,
-            'error': 'docker_api_error',
-            'message': str(e)
-        }), 500
-    except Exception as e:
-        print(f"[CREATE][ERROR] Exception creando contenedor: {e}", flush=True)
-        return jsonify({
-            'success': False,
-            'error': 'container_create_error',
-            'message': str(e)
-        }), 500
-
-    return jsonify({
-        'success': True,
-        'message': f'Container {container_id} creado (no iniciado)',
-        'data': {
-            'containerId': container_id,
-            'dockerName': container_name,
-            'imageId': image.id,
-            'createdContainerId': container_obj.id,
-            'started': False,
-            'repoUrl': repo_url or None
-        }
-    }), 201
+                shutil.rmtree(tmp_dir)
+                print(f"[CREATE] Limpiado tmp_dir={tmp_dir}", flush=True)
+            except Exception as cleanup_err:
+                print(f"[CREATE][WARN] No se pudo limpiar {tmp_dir}: {cleanup_err}", flush=True)
 
