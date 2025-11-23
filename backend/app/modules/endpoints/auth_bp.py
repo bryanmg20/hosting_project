@@ -66,20 +66,6 @@ def login():
     except Exception as e:
         return response_handler.error('Internal server error', 500)
 
-@auth_bp.route('/me', methods=['GET'])
-@jwt_required()
-def get_current_user():
-    try:
-        user_email = get_jwt_identity()
-        claims = get_jwt()
-        
-        user_data = auth_core._get_user_data(user_email)
-        user_data['name'] = claims.get('name', user_data['name'])
-        
-        return response_handler.user_info(user_data)
-        
-    except Exception as e:
-        return response_handler.error('Internal server error', 500)
 
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()

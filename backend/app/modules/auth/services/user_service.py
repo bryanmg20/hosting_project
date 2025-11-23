@@ -56,35 +56,7 @@ class UserService(BaseAuthService):
 
         except Exception as e:
             return {'success': False, 'error': str(e)}
-    def create_user_in_table(self, access_token: str, user_data: dict) -> dict:
-        """Crear usuario en la tabla users de Roble usando el token proporcionado"""
-        try:
-            url = f"{self.database_url}/insert"
-            headers = {'Authorization': f'Bearer {access_token}'}
-
-            payload = {
-                'tableName': 'users',
-                'records': [user_data]
-            }
-
-            # Usar el _request que ya existe
-            response = self._request('POST', url, headers=headers, json=payload)
-
-            if response.get('success'):
-                return {
-                    'success': True,
-                    'data': response.get('data')
-                }
-
-            return {
-                'success': False,
-                'error': f"Failed to create user (status {response.get('status_code')})",
-                'details': response.get('details')
-            }
-
-        except Exception as e:
-            return {'success': False, 'error': str(e)}
-
+    
     
     def store_roble_tokens(self, email: str, access_token: str, refresh_token: str) -> dict:
         """Almacena los tokens de Roble para el usuario en memoria."""

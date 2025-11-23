@@ -53,10 +53,10 @@ def sse_events():
             
             # Guardar el estado inicial de cada contenedor
             for container in containers:
-                container_id = container.get('id')
-                container_name = container.get('container_name', container_id)
+                container_id = container.get('_id')
+               
                 if container_id:
-                    initial_status = get_real_container_status(container_name)
+                    initial_status = 'unknown'
                     container['status'] = initial_status
                     initial_statuses[container_id] = initial_status
             

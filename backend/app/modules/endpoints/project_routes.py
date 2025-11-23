@@ -1,8 +1,7 @@
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-import datetime
-from app.modules.auth.services.container_service import container_service
-from app.modules.project.validators import validate_create_project_data, validate_project_status
+from app.modules.auth.services.project_service import project_service
+from app.modules.project.validators import validate_create_project_data
 from app.modules.project.project_logic import format_project_list, format_project_response, create_new_project_data
 from app.modules.project.responses import success_response, list_response, error_response
 
@@ -23,7 +22,7 @@ def get_projects():
             return error_response('User not authenticated', 401)
         
         # 2. Obtener contenedores del usuario
-        containers_result = container_service.get_user_containers(user_email)
+        containers_result = project_service.get_user_projects(user_email)
         
         if not containers_result['success']:
             return error_response(
@@ -32,7 +31,7 @@ def get_projects():
             )
         
         # 3. Procesar y formatear proyectos
-        containers = containers_result.get('containers', [])
+        containers = containers_result.get('projects', [])
         projects = format_project_list(containers)
         
         # 4. Retornar respuesta
@@ -69,13 +68,14 @@ def create_project():
         )
     
         
-        result = container_service.add_container_to_user(
+        result = project_service.create_project(
         email=user_email,
-        name=project_data['name'],
+        project_name=project_data['name'],
         url=project_data['url'],
         github_url=project_data['github_url'],
         created_time=project_data['created_at']
      )
+      
     
 
         
@@ -92,12 +92,12 @@ def create_project():
 def get_project(project_id):
     try:
         user_email = get_jwt_identity()
-        result = container_service.get_container_by_id(user_email, project_id)
+        result = project_service.get_project_by_id(user_email, project_id)
         
         if not result['success']:
             return error_response(result.get('error', 'Project not found'), 404)
         
-        project_response = format_project_response(result['container'])
+        project_response = format_project_response(result['project'])
         return success_response(project_response)
         
     except Exception as e:
@@ -117,7 +117,9 @@ def delete_project(project_id):
         if not user_email:
             return error_response('User not authenticated', 401)
         
-        project_result = container_service.delete_project(user_email, project_id)
+        #aqui se tiene que eliminar el contenedor antes que el proyecto
+
+        project_result = project_service.delete_project(user_email, project_id)
 
         if not project_result['success']:
             return error_response('Project not found', 404)
