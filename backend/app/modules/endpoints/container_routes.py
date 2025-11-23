@@ -138,10 +138,79 @@ def stop_container(container_id):
 @container_bp.route('/containers/<container_id>/rebuild', methods=['POST'])
 @jwt_required()
 def restart_container(container_id):
-    """Mock para reiniciar contenedor"""
+    """Reinicia un contenedor: stop -> remove -> create -> start"""
+
+    # 1. Buscar en cache
+    cache_entry = _container_name_cache.get(container_id)
+    if not cache_entry:
+        return jsonify({
+            'success': False,
+            'error': 'container_id_not_cached',
+            'message': f'No existe entry en cache para id {container_id}.'
+        }), 404
+
+    container_name = cache_entry.get('name') or f'project_{container_id}'
+
+    # 2. Buscar contenedor existente
+    try:
+        matches = docker_client.containers.list(all=True, filters={'name': container_name})
+        if not matches:
+            return jsonify({
+                'success': False,
+                'error': 'container_not_found',
+                'message': f'No existe contenedor con nombre {container_name}'
+            }), 404
+
+        container = matches[0]
+    except docker_errors.APIError as e:
+        return jsonify({'success': False, 'error': 'docker_api_error', 'message': str(e)}), 500
+
+    # 3. Detener contenedor si está corriendo
+    try:
+        container.reload()
+        if container.status == 'running':
+            container.stop()
+    except Exception:
+        pass
+
+    # 4. Eliminar contenedor
+    try:
+        container.remove(force=True)
+    except docker_errors.APIError as e:
+        return jsonify({
+            'success': False,
+            'error': 'remove_failed',
+            'message': f'Error eliminando contenedor: {e}'
+        }), 500
+
+    # 5. Crear nuevo contenedor desde la misma imagen
+    try:
+        image_id = container.image.id
+        new_container = docker_client.containers.create(
+            image=image_id,
+            name=container_name,
+            network='app-network'
+        )
+    except docker_errors.APIError as e:
+        return jsonify({'success': False, 'error': 'recreate_failed', 'message': str(e)}), 500
+
+    # 6. Iniciar contenedor
+    try:
+        new_container.start()
+        new_container.reload()
+    except docker_errors.APIError as e:
+        return jsonify({'success': False, 'error': 'start_failed', 'message': str(e)}), 500
+
+    # 7. Resultado
     return jsonify({
         'success': True,
-        'message': f'Container {container_id} restarted successfully'
+        'message': f'Container {container_id} reiniciado correctamente',
+        'data': {
+            'containerId': container_id,
+            'dockerName': container_name,
+            'newContainerId': new_container.id,
+            'status': new_container.status
+        }
     }), 200
 
 @container_bp.route('/containers/<container_id>/create', methods=['POST'])
