@@ -11,7 +11,7 @@ def create_app():
     # Configuración
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'Null')
     app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'Null')
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(seconds= 10)
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes= 15)
     app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=7)
     app.config['ROBLE_DB_NAME'] = os.environ.get('ROBLE_DB_NAME', 'Null')
     
