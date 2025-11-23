@@ -67,6 +67,26 @@ def login():
         return response_handler.error('Internal server error', 500)
 
 
+@auth_bp.route('/me', methods=['GET'])
+@jwt_required()
+def get_current_user():
+    try:
+        identity = get_jwt_identity()       
+        claims = get_jwt()                 
+
+        print(f"Claims: {claims}", flush=True)
+        print(f"Identity: {identity}", flush=True)
+        user = {
+            "email": claims.get("email", identity),
+            "name": claims.get("name")
+        }
+
+        return jsonify({"user": user}), 200
+
+    except Exception:
+        return jsonify({"error": "Internal server error"}), 500
+
+
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():

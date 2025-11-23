@@ -18,12 +18,3 @@ def validate_create_project_data(data):
     
     return {'valid': True, 'name': name, 'github_url': github_url}
 
-def validate_project_status(data):
-    if 'status' not in data:
-        return {'valid': False, 'error': 'Missing status field'}
-    
-    valid_statuses = ['deploying', 'active', 'failed', 'deleting']
-    if data['status'] not in valid_statuses:
-        return {'valid': False, 'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'}
-    
-    return {'valid': True, 'status': data['status']}
