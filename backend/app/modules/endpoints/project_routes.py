@@ -94,6 +94,9 @@ def get_project(project_id):
         user_email = get_jwt_identity()
         result = project_service.get_project_by_id(user_email, project_id)
         
+        if not user_email:
+            return error_response('User not authenticated', 401)
+        
         if not result['success']:
             return error_response(result.get('error', 'Project not found'), 404)
         

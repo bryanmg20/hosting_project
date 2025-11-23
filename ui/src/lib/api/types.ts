@@ -58,6 +58,12 @@ export interface MeResponse {
   user: User;
 }
 
+export interface RefreshTokenResponse {
+  access_token: string;
+  refresh_token?: string;
+  user?: User;
+}
+
 // Project Endpoints
 export interface CreateProjectRequest {
   name: string;

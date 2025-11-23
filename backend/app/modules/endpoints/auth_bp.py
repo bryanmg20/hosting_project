@@ -1,5 +1,5 @@
 from flask import Blueprint, request,jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt, create_access_token
 
 from app.modules.auth.services.core_service import AuthCoreService
 from app.modules.auth.services.validator_service import AuthValidatorService
@@ -85,6 +85,30 @@ def get_current_user():
 
     except Exception:
         return jsonify({"error": "Internal server error"}), 500
+
+@auth_bp.route('/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    try:
+        identity = get_jwt_identity()
+        claims = get_jwt()
+
+        new_access_token = create_access_token(
+            identity=identity,
+            additional_claims={
+                "email": claims["email"],
+                "name": claims["name"]
+            }
+        )
+
+        return jsonify({
+            "access_token": new_access_token
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": "Internal server error"}), 500
+
+
 
 
 @auth_bp.route('/logout', methods=['POST'])
