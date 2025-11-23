@@ -48,7 +48,6 @@ class ProjectService(UserService):
                 'project_name': project_name,
                 'url': url,
                 'github_url': github_url,
-                'username': email.split('@')[0],
                 'created_at': created_time
             }
            

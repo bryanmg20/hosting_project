@@ -3,6 +3,55 @@ from .base import _tokens_store
 import time
 
 class UserService(BaseAuthService):
+    def create_user(
+        self,
+        email: str,
+        username: str,
+    ) -> dict:
+        """Crear un nuevo usuario en la tabla user"""
+        try:
+            # 1. Obtener token válido
+            token_result = self.get_valid_access_token(email)
+            if not token_result['success']:
+                return token_result
+
+            access_token = token_result['access_token']
+
+            # 3. Crear nuevo proyecto
+            new_user = {
+                'email': email,
+                'username': username,
+            }
+           
+            # 4. Insertar en la tabla projects
+            insert_url = f"{self.database_url}/insert"
+            headers = {'Authorization': f'Bearer {access_token}'}
+            insert_data = {
+                'tableName': 'user',
+                'records': [new_user]
+            }
+           
+            # 5. Usar el método genérico _request
+            response = self._request('POST', insert_url, headers=headers, json=insert_data)
+            
+            if isinstance(response, dict) and 'inserted' in response:
+                if response['inserted'] and len(response['inserted']) > 0:
+                    created_user = response['inserted'][0]
+                    print(f"usuario creado: {created_user.get('_id')}", flush=True)
+                    return {'success': True, 'user': created_user}
+                else:
+                    # Verificar si hay errores en skipped
+                    if response.get('skipped'):
+                        error_msg = response['skipped'][0].get('reason', 'Unknown error')
+                        return {'success': False, 'error': error_msg}
+                    return {'success': False, 'error': 'Failed to create user'}
+            else:
+                return {'success': False, 'error': 'Invalid response format'}
+
+        except Exception as e:
+            
+            return {'success': False, 'error': str(e)}
+
     def get_user_data_with_retry(self, email: str, max_retries: int = 2) -> dict:
         """
         Obtiene los datos del usuario desde la base de datos usando un token válido.
@@ -25,7 +74,7 @@ class UserService(BaseAuthService):
                 access_token = token_result.get('access_token')
                 refresh_token = token_result.get('refresh_token')
                 
-                url = f"{self.database_url}/read?tableName=projects&email={email}"
+                url = f"{self.database_url}/read?tableName=user&email={email}"
                 headers = {'Authorization': f'Bearer {access_token}'}
         
                 response = self._request('GET', url, headers=headers)
