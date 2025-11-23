@@ -10,12 +10,69 @@ container_bp = Blueprint('container', __name__)
 @container_bp.route('/containers/<container_id>/start', methods=['POST'])
 @jwt_required()
 def start_container(container_id):
-    """Mock para iniciar contenedor"""
-    # apiClient SIEMPRE espera JSON, incluso para POST vacíos
-    return jsonify({
-        'success': True,
-        'message': f'Container {container_id} started successfully'
-    }), 200
+    """
+    Inicia un contenedor previamente creado.
+
+    Flujo:
+    1. Obtiene el nombre lógico desde _container_name_cache.
+    2. Busca el contenedor real en Docker.
+    3. Si está detenido -> start()
+    4. Devuelve estado.
+    """
+
+    cache_entry = _container_name_cache.get(container_id)
+    if not cache_entry:
+        return jsonify({
+            'success': False,
+            'error': 'container_id_not_cached',
+            'message': f'No existe entry en cache para id {container_id}.'
+        }), 404
+
+    container_name = cache_entry.get('name') or f'project_{container_id}'
+
+    # Buscar contenedor por nombre
+    try:
+        containers = docker_client.containers.list(all=True, filters={'name': container_name})
+        if not containers:
+            return jsonify({
+                'success': False,
+                'error': 'container_not_found',
+                'message': f'No existe contenedor con nombre {container_name}'
+            }), 404
+
+        container_obj = containers[0]
+
+        # Iniciar si está detenido
+        if container_obj.status != 'running':
+            container_obj.start()
+            message = f'Container {container_name} iniciado correctamente'
+        else:
+            message = f'Container {container_name} ya estaba en ejecución'
+
+        container_obj.reload()
+
+        return jsonify({
+            'success': True,
+            'message': message,
+            'data': {
+                'containerId': container_id,
+                'dockerName': container_name,
+                'state': container_obj.status
+            }
+        }), 200
+
+    except docker_errors.APIError as e:
+        return jsonify({
+            'success': False,
+            'error': 'docker_api_error',
+            'message': str(e)
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'start_failed',
+            'message': str(e)
+        }), 500
 
 @container_bp.route('/containers/<container_id>/stop', methods=['POST'])
 @jwt_required()
