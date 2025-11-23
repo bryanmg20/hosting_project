@@ -15,19 +15,19 @@ _container_name_cache = {}  # {container_id: container_name}
 
 def update_user_containers(user_email: str) -> bool:
     """
-    Actualizar la lista de contenedores desde la base de datos usando container_service
+    Actualizar la lista de contenedores desde la base de datos usando project_service
     """
     try:
-        from app.modules.auth.services.container_service import container_service
+        from app.modules.auth.services.project_service import project_service
         
-        containers_result = container_service.get_user_containers(user_email)
-        
+        containers_result = project_service.get_user_projects(user_email)
+       
         if containers_result['success']:
-            containers = containers_result.get('containers', [])
-            
+            containers = containers_result.get('projects', [])
+         
             # Extraer y cachear nombres de contenedores desde las URLs
             for container in containers:
-                container_id = container.get('id')
+                container_id = container.get('_id')
                 container_url = container.get('url', '')
                 githuburl = container.get('github_url', '')
                 # Extraer nombre del contenedor desde la URL
@@ -40,7 +40,7 @@ def update_user_containers(user_email: str) -> bool:
                
             
             _current_containers[user_email] = containers
-            
+         
             return True
         else:
            
@@ -75,7 +75,6 @@ def get_real_container_status(container_name: str) -> str:
     """
     Obtener el estado REAL del contenedor desde Docker
     """
-
     try:
         # Buscar el contenedor por nombre en Docker
         containers = docker_client.containers.list(
@@ -150,7 +149,7 @@ def check_container_changes(user_email: str, previous_statuses: Dict[str, str] =
     containers = _current_containers.get(user_email, [])
     
     for container in containers:
-        container_id = container.get('id')
+        container_id = container.get('_id')
         container_name = _container_name_cache.get(container_id, container_id).get('name', container_id)
         
         if not container_id:
@@ -182,7 +181,7 @@ def check_container_changes(user_email: str, previous_statuses: Dict[str, str] =
                 }
             })
             
-            # ✅ Actualizar AMBOS: el estado interno Y previous_statuses si se proporciona
+            # Actualizar AMBOS: el estado interno Y previous_statuses si se proporciona
             container['status'] = current_status
             if previous_statuses is not None:
                 previous_statuses[container_id] = current_status
@@ -199,11 +198,11 @@ def get_containers_metrics(user_email: str) -> List[Dict]:
     containers = _current_containers.get(user_email, [])
     
     for container in containers:
-        container_id = container.get('id')
+        container_id = container.get('_id')
         container_name = _container_name_cache.get(container_id, container_id).get('name', container_id)
         
         if container_id:
-            # ✅ Obtener métricas sin importar el estado
+            # Obtener métricas sin importar el estado
             metrics = get_container_metrics(container_name)
             if metrics:
                 metrics_events.append({

@@ -1,8 +1,7 @@
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-import datetime
-from app.modules.auth.services.container_service import container_service
-from app.modules.project.validators import validate_create_project_data, validate_project_status
+from app.modules.auth.services.project_service import project_service
+from app.modules.project.validators import validate_create_project_data
 from app.modules.project.project_logic import format_project_list, format_project_response, create_new_project_data
 from app.modules.project.responses import success_response, list_response, error_response
 
@@ -15,6 +14,7 @@ def get_projects():
     Obtener todos los proyectos del usuario autenticado
     """
     try:
+
         # 1. Obtener usuario autenticado
         user_email = get_jwt_identity()
         
@@ -22,7 +22,7 @@ def get_projects():
             return error_response('User not authenticated', 401)
         
         # 2. Obtener contenedores del usuario
-        containers_result = container_service.get_user_containers(user_email)
+        containers_result = project_service.get_user_projects(user_email)
         
         if not containers_result['success']:
             return error_response(
@@ -31,7 +31,7 @@ def get_projects():
             )
         
         # 3. Procesar y formatear proyectos
-        containers = containers_result.get('containers', [])
+        containers = containers_result.get('projects', [])
         projects = format_project_list(containers)
         
         # 4. Retornar respuesta
@@ -67,16 +67,17 @@ def create_project():
             validation['github_url']
         )
     
-
         
-        result = container_service.add_container_to_user(
-            email=user_email,
-            project_id=project_data['id'],
-            name=project_data['name'],
-            url=project_data['url'],
-            github_url=project_data['github_url'],
-            created=project_data['created_at']
-        )
+        result = project_service.create_project(
+        email=user_email,
+        project_name=project_data['name'],
+        url=project_data['url'],
+        github_url=project_data['github_url'],
+        created_time=project_data['created_at']
+     )
+      
+    
+
         
         if not result['success']:
             return error_response(f'Failed to create project: {result.get("error")}', 500)
@@ -91,12 +92,12 @@ def create_project():
 def get_project(project_id):
     try:
         user_email = get_jwt_identity()
-        result = container_service.get_container_by_id(user_email, project_id)
+        result = project_service.get_project_by_id(user_email, project_id)
         
         if not result['success']:
             return error_response(result.get('error', 'Project not found'), 404)
         
-        project_response = format_project_response(result['container'])
+        project_response = format_project_response(result['project'])
         return success_response(project_response)
         
     except Exception as e:
@@ -116,79 +117,14 @@ def delete_project(project_id):
         if not user_email:
             return error_response('User not authenticated', 401)
         
-        # 1. Verificar que el proyecto existe y pertenece al usuario
-        project_result = container_service.get_container_by_id(user_email, project_id)
+        #aqui se tiene que eliminar el contenedor antes que el proyecto
+
+        project_result = project_service.delete_project(user_email, project_id)
+
         if not project_result['success']:
             return error_response('Project not found', 404)
-        
-        # 2. Obtener todos los contenedores y filtrar el que se elimina
-        containers_result = container_service.get_user_containers(user_email)
-        if not containers_result['success']:
-            return error_response('Failed to fetch user projects', 500)
-        
-        containers = containers_result.get('containers', [])
-        updated_containers = [container for container in containers if container.get('id') != project_id]
-        
-        # 3. Actualizar la lista de contenedores en Roble
-        update_result = container_service.update_user_containers(user_email, updated_containers)
-        if not update_result['success']:
-            return error_response(f'Failed to delete project: {update_result.get("error")}', 500)
         
         return success_response(None, 'Project deleted successfully', 200)
-        
-    except Exception as e:
-        return error_response('Internal server error', 500)
-    
-
-#mock status project
-
-@project_bp.route('/projects/<project_id>/status', methods=['PATCH'])
-@jwt_required()
-def update_project_status(project_id):
-    """
-    Actualizar el estado de un proyecto específico
-    Mock endpoint - siempre devuelve éxito con el estado actualizado
-    """
-    try:
-        user_email = get_jwt_identity()
-        
-        if not user_email:
-            return error_response('User not authenticated', 401)
-        
-        # 1. Obtener datos de la petición
-        request_data = request.get_json()
-        if not request_data or 'status' not in request_data:
-            return error_response('Status is required', 400)
-        
-        new_status = request_data['status']
-        
-        # 2. Validar que el estado sea permitido
-        valid_statuses = ['stopped', 'deploying', 'running', 'error']
-        if new_status not in valid_statuses:
-            return error_response(f'Invalid status. Must be one of: {valid_statuses}', 400)
-        
-        # 3. Verificar que el proyecto existe y pertenece al usuario
-        project_result = container_service.get_container_by_id(user_email, project_id)
-        if not project_result['success']:
-            return error_response('Project not found', 404)
-        
-        # 4. MOCK: Simular actualización exitosa
-        # En una implementación real, aquí actualizarías la base de datos
-        current_project = project_result['container']
-        
-        # Crear respuesta mock con el proyecto actualizado
-        updated_project = {
-            **current_project,
-            'status': new_status,
-            'updated_at': datetime.utcnow().isoformat() + 'Z'
-        }
-        
-        # 5. Retornar respuesta mock exitosa
-        return success_response(
-            data={'project': updated_project},
-            message=f'Project status updated to {new_status}',
-            status_code=200
-        )
         
     except Exception as e:
         return error_response('Internal server error', 500)

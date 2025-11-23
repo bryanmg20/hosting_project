@@ -88,7 +88,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     eventSource.onopen = () => {
       setSseStatus('connected');
       toast.success('SSE connection established', {
-        description: 'Automatic updates enabled',
+        description: '',
       });
       
       // Marcar como sync inicial para suprimir notificaciones de contenedores
@@ -97,7 +97,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Después de 2 segundos, permitir notificaciones normales
       setTimeout(() => {
         isInitialSyncRef.current = false;
-      }, 500);
+      }, 2000);
     };
 
     // Evento: Métricas actualizadas (CPU, memoria, requests)
@@ -138,8 +138,8 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     eventSource.onerror = () => {
       setSseStatus('disconnected');
       eventSource.close();
-      toast.error('Conexión SSE perdida', {
-        description: 'Reintentando conexión...',
+      toast.error('Lost connection SSE', {
+        description: 'retrying connection...',
       });
     };
 
@@ -157,7 +157,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (sseStatus === 'disconnected' && token) {
       reconnectTimeoutRef.current = setTimeout(() => {
         connectSSE();
-      }, 15000); // Reintentar después de 3 segundos
+      }, 30000); // Reintentar después de 3 segundos
     }
   }, [sseStatus, connectSSE]);
 

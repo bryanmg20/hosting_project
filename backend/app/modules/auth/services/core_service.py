@@ -25,8 +25,8 @@ class AuthCoreService:
         self.user_service.store_roble_tokens(email, roble_access_token, roble_refresh_token)
         
         # 4. Crear usuario en tabla
-        user_table_data = {'user': name, 'email': email, 'containers': []}
-        self.user_service.create_user_in_table(roble_access_token, user_table_data)
+        #user_table_data = {'user': name, 'email': email, 'containers': []}
+        #self.user_service.create_user_in_table(roble_access_token, user_table_data)
         
         # 5. Generar JWT tokens
         additional_claims = {'name': name, 'email': email}
@@ -61,6 +61,7 @@ class AuthCoreService:
         access_token = create_access_token(identity=email, additional_claims=additional_claims)
         refresh_token = create_refresh_token(identity=email, additional_claims=additional_claims)
         
+        
         return {
             'success': True,
             'access_token': access_token,
@@ -71,18 +72,8 @@ class AuthCoreService:
     def _get_user_data(self, email):
         """Obtiene datos del usuario de Roble"""
         user_data_result = self.user_service.get_user_data_with_retry(email)
-        user_name = "Usuario"
-        containers = []
-        
+        username = 'not_found'
         if user_data_result['success']:
-            # ✅ CORRECCIÓN: user_data_result['data'] es la lista directa
-            for user_row in user_data_result['data']:  # ← Sin .get('rows')
-                if user_row.get('email') == email:
-                    user_name = user_row.get('user', user_row.get('name', 'Usuario'))
-                    
-                    # ✅ CORRECCIÓN: containers ya es una lista, no necesita json.loads
-                    containers = user_row.get('containers', [])  # ← Ya es lista
-                    
-                    break
-                    
-        return {'email': email, 'name': user_name, 'containers': containers}
+            username = user_data_result['data'][0].get('username','not_found')  # ← Sin .get('rows')
+               
+        return {'email': email, 'name': username}
