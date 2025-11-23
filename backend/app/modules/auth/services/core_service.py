@@ -72,18 +72,8 @@ class AuthCoreService:
     def _get_user_data(self, email):
         """Obtiene datos del usuario de Roble"""
         user_data_result = self.user_service.get_user_data_with_retry(email)
-        user_name = "Usuario"
-        containers = []
-        
+        username = 'not_found'
         if user_data_result['success']:
-            # ✅ CORRECCIÓN: user_data_result['data'] es la lista directa
-            for user_row in user_data_result['data']:  # ← Sin .get('rows')
-                if user_row.get('email') == email:
-                    user_name = user_row.get('user', user_row.get('name', 'Usuario'))
-                    
-                    # ✅ CORRECCIÓN: containers ya es una lista, no necesita json.loads
-                    containers = user_row.get('containers', [])  # ← Ya es lista
-                    
-                    break
-                    
-        return {'email': email, 'name': user_name, 'containers': containers}
+            username = user_data_result['data'][0].get('username','not_found')  # ← Sin .get('rows')
+               
+        return {'email': email, 'name': username}

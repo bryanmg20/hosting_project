@@ -25,16 +25,16 @@ class UserService(BaseAuthService):
                 access_token = token_result.get('access_token')
                 refresh_token = token_result.get('refresh_token')
                 
-                url = f"{self.database_url}/read?tableName=users&email={email}"
+                url = f"{self.database_url}/read?tableName=projects&email={email}"
                 headers = {'Authorization': f'Bearer {access_token}'}
         
                 response = self._request('GET', url, headers=headers)
                 
-                # ✅ CORRECCIÓN: response es una lista directa, no dict con 'success'
+                # CORRECCIÓN: response es una lista directa, no dict con 'success'
                 if isinstance(response, list):
                     return {'success': True, 'data': response}  # ← Lista directa
                 
-                # ❌ Si response es dict pero tiene error
+                # Si response es dict pero tiene error
                 if isinstance(response, dict) and response.get('success'):
                     return {'success': True, 'data': response.get('data', [])}
                 
