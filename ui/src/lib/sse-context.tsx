@@ -120,9 +120,9 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           deploying: 'deploying',
           error: 'error',
           inactive: 'inactive',
-          unknown: 'inknown',
+          unknown: 'unknown',
         };
-        toast.info(`${data.name} ${statusLabels[data.status as ContainerStatus] || data.status}`);
+        toast.info(`${data.projectName} ${statusLabels[data.status as ContainerStatus] || data.status}`);
       }
     });
 

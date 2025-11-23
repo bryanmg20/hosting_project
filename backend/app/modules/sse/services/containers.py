@@ -174,8 +174,7 @@ def check_container_changes(user_email: str, previous_statuses: Dict[str, str] =
                     'projectId': container_id,
                     'status': current_status,
                     'previousStatus': previous_status or 'unknown',
-                    'name': container.get('name', 'Unknown'),
-                    'containerName': container_name,
+                    'projectName': container.get('project_name', 'Unknown'),
                     'url': container.get('url', ''),
                     'timestamp': datetime.utcnow().isoformat() + 'Z'
                 }
