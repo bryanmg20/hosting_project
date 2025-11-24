@@ -1,5 +1,6 @@
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from app.modules.sse.services.containers import _container_name_cache, docker_client
 from app.modules.auth.services.project_service import project_service
 from app.modules.project.validators import validate_create_project_data
 from app.modules.project.project_logic import format_project_list, format_project_response, create_new_project_data
@@ -120,8 +121,40 @@ def delete_project(project_id):
         if not user_email:
             return error_response('User not authenticated', 401)
         
-        #aqui se tiene que eliminar el contenedor antes que el proyecto
+        # 1. Eliminar contenedor e imagen antes de eliminar proyecto
+        try:
+            cache_entry = _container_name_cache.get(project_id)
+            if cache_entry:
+                container_name = cache_entry.get('name') or f'project_{project_id}'
+                
+                # Buscar y eliminar contenedor
+                containers = docker_client.containers.list(all=True, filters={'name': container_name})
+                if containers:
+                    container_obj = containers[0]
+                    image_id = container_obj.image.id
+                    
+                    # Detener y eliminar contenedor
+                    try:
+                        if container_obj.status == 'running':
+                            container_obj.stop(timeout=10)
+                        container_obj.remove(force=True)
+                    except Exception as e:
+                        print(f"[DELETE_PROJECT] Error eliminando contenedor: {e}", flush=True)
+                    
+                    # Eliminar imagen
+                    try:
+                        docker_client.images.remove(image_id, force=True)
+                    except Exception as e:
+                        print(f"[DELETE_PROJECT] Error eliminando imagen: {e}", flush=True)
+                
+                # Remover de cache
+                if project_id in _container_name_cache:
+                    del _container_name_cache[project_id]
+        except Exception as e:
+            print(f"[DELETE_PROJECT][WARN] Error en limpieza Docker: {e}", flush=True)
+            # Continuar con eliminación del proyecto aunque falle Docker cleanup
 
+        # 2. Eliminar proyecto de la base de datos
         project_result = project_service.delete_project(user_email, project_id)
 
         if not project_result['success']:

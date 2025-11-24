@@ -8,20 +8,24 @@ from docker import errors as docker_errors
 from app.modules.sse.services.containers import _container_name_cache, docker_client
 container_bp = Blueprint('container', __name__)
 
-# Helper opcional para limpiar imágenes "dangling" (<none>) generadas por builds multi-stage
-def _auto_prune_dangling_images():
-    if os.environ.get('AUTO_PRUNE_DANGLING', '0') != '1':
-        return
-    print('[PRUNE] Iniciando prune de imágenes dangling...', flush=True)
+# Helper opcional para limpiar imágenes <none> (dangling) tras un build
+def _cleanup_dangling_images():
+    """Eliminar imágenes dangling (<none>) que quedan tras builds sin etiqueta.
+    Se hace de forma best-effort: si falla algún remove se ignora.
+    """
     try:
-        result = docker_client.images.prune(filters={'dangling': True})
-        deleted = result.get('ImagesDeleted') or []
-        reclaimed = result.get('SpaceReclaimed')
-        print(f"[PRUNE] Eliminadas={len(deleted)} SpaceReclaimed={reclaimed} bytes", flush=True)
-    except docker_errors.APIError as e:
-        print(f"[PRUNE][ERROR] Docker API error: {e}", flush=True)
+        dangling = docker_client.images.list(filters={'dangling': True})
+        removed = 0
+        for img in dangling:
+            # No remover si (por error) coincide con la imagen recién creada con tag
+            try:
+                docker_client.images.remove(img.id, force=True)
+                removed += 1
+            except Exception:
+                pass
+        print(f"[CREATE][CLEANUP] Dangling images removidas: {removed}", flush=True)
     except Exception as e:
-        print(f"[PRUNE][ERROR] Exception: {e}", flush=True)
+        print(f"[CREATE][CLEANUP][WARN] No se pudo limpiar dangling images: {e}", flush=True)
 
 @container_bp.route('/containers/<container_id>/start', methods=['POST'])
 @jwt_required()
@@ -296,7 +300,8 @@ def create_container(container_id):
                 path=context_path,
                 tag=container_name,
                 rm=True,
-                buildargs=build_args
+                buildargs=build_args,
+                nocache=True
             )
             print(f"[CREATE] Build OK image_id={image.id}", flush=True)
         except docker_errors.BuildError as e:
@@ -332,6 +337,8 @@ def create_container(container_id):
             create_kwargs = payload.get('createOptions') or {}
             container_obj = docker_client.containers.create(image.id, name=container_name, network='app-network',  **create_kwargs)
             print(f"[CREATE] Contenedor creado id={container_obj.id}", flush=True)
+            # Limpieza de imágenes dangling (<none>) generadas por el build
+            _cleanup_dangling_images()
         except docker_errors.APIError as e:
             print(f"[CREATE][ERROR] Docker API error (create): {e}", flush=True)
             return jsonify({
@@ -368,6 +375,4 @@ def create_container(container_id):
                 print(f"[CREATE] Limpiado tmp_dir={tmp_dir}", flush=True)
             except Exception as cleanup_err:
                 print(f"[CREATE][WARN] No se pudo limpiar {tmp_dir}: {cleanup_err}", flush=True)
-        # Prune de imágenes dangling (si habilitado)
-        _auto_prune_dangling_images()
 
