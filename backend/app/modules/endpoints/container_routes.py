@@ -6,6 +6,7 @@ import subprocess
 import shutil
 from docker import errors as docker_errors
 from app.modules.sse.services.containers import _container_name_cache, docker_client
+# Nota: No importar delete_project aquí. Rebuild NO elimina el proyecto, sólo reconstruye su contenedor.
 container_bp = Blueprint('container', __name__)
 
 # Helper opcional para limpiar imágenes <none> (dangling) tras un build
@@ -158,81 +159,183 @@ def stop_container(container_id):
 @container_bp.route('/containers/<container_id>/rebuild', methods=['POST'])
 @jwt_required()
 def restart_container(container_id):
-    """Reinicia un contenedor: stop -> remove -> create -> start"""
+    """Reconstruye el contenedor del proyecto sin borrar el proyecto.
 
-    # 1. Buscar en cache
+    Pasos:
+    1. Buscar nombre lógico en cache.
+    2. Detener y eliminar contenedor existente (si hay).
+    3. Eliminar imagen asociada (por ID y por tag).
+    4. Clonar repo / usar contextPath igual que create.
+    5. Construir nueva imagen (nocache para asegurar reconstrucción real).
+    6. Crear (NO iniciar) nuevo contenedor.
+    7. Limpiar dangling images y tmp dir.
+    8. Responder con datos de nuevo contenedor.
+    """
+
+    payload = request.get_json(silent=True) or {}
     cache_entry = _container_name_cache.get(container_id)
     if not cache_entry:
         return jsonify({
             'success': False,
             'error': 'container_id_not_cached',
-            'message': f'No existe entry en cache para id {container_id}.'
+            'message': f'No existe entry en cache para id {container_id}. Actualiza lista primero.'
         }), 404
 
     container_name = cache_entry.get('name') or f'project_{container_id}'
+    repo_url = payload.get('repoUrl') or cache_entry.get('githuburl') or ''
+    context_path = payload.get('contextPath')
+    build_args = payload.get('buildArgs') or {}
+    create_kwargs = payload.get('createOptions') or {}
 
-    # 2. Buscar contenedor existente
+    # 2. Detener / eliminar contenedor existente
+    existing_image_id = None
     try:
         matches = docker_client.containers.list(all=True, filters={'name': container_name})
-        if not matches:
-            return jsonify({
-                'success': False,
-                'error': 'container_not_found',
-                'message': f'No existe contenedor con nombre {container_name}'
-            }), 404
-
-        container = matches[0]
+        if matches:
+            existing = matches[0]
+            existing_image_id = existing.image.id
+            try:
+                existing.reload()
+                if existing.status == 'running':
+                    existing.stop(timeout=10)
+                    print(f"[REBUILD] Contenedor {container_name} detenido", flush=True)
+            except Exception as e:
+                print(f"[REBUILD][WARN] No se pudo detener {container_name}: {e}", flush=True)
+            try:
+                existing.remove(force=True)
+                print(f"[REBUILD] Contenedor {container_name} eliminado", flush=True)
+            except docker_errors.APIError as e:
+                return jsonify({
+                    'success': False,
+                    'error': 'remove_failed',
+                    'message': f'Error eliminando contenedor: {e}'
+                }), 500
     except docker_errors.APIError as e:
         return jsonify({'success': False, 'error': 'docker_api_error', 'message': str(e)}), 500
 
-    # 3. Detener contenedor si está corriendo
+    # 3. Eliminar imagen asociada
+    if existing_image_id:
+        try:
+            docker_client.images.remove(existing_image_id, force=True)
+            print(f"[REBUILD] Imagen asociada {existing_image_id[:12]} eliminada", flush=True)
+        except docker_errors.APIError as e:
+            print(f"[REBUILD][WARN] No se pudo eliminar imagen {existing_image_id[:12]}: {e}", flush=True)
+
+    # También eliminar imágenes con tag container_name
     try:
-        container.reload()
-        if container.status == 'running':
-            container.stop()
+        tagged = docker_client.images.list(name=container_name)
+        for img in tagged:
+            try:
+                docker_client.images.remove(img.id, force=True)
+                print(f"[REBUILD] Imagen con tag {img.short_id} eliminada", flush=True)
+            except Exception:
+                pass
     except Exception:
         pass
 
-    # 4. Eliminar contenedor
-    try:
-        container.remove(force=True)
-    except docker_errors.APIError as e:
+    # 4. Clonar repo si no hay context_path
+    tmp_dir = None
+    if not context_path:
+        if repo_url:
+            try:
+                tmp_dir = tempfile.mkdtemp(prefix=f'{container_name}_rebuild_')
+                subprocess.check_call(['git', 'clone', '--depth', '1', repo_url, tmp_dir])
+                context_path = tmp_dir
+            except subprocess.CalledProcessError as e:
+                return jsonify({
+                    'success': False,
+                    'error': 'git_clone_failed',
+                    'message': f'Error clonando repo {repo_url}: {e}'
+                }), 400
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'no_context',
+                'message': 'Debe proporcionar contextPath o repoUrl.'
+            }), 400
+
+    if not os.path.isdir(context_path):
         return jsonify({
             'success': False,
-            'error': 'remove_failed',
-            'message': f'Error eliminando contenedor: {e}'
-        }), 500
+            'error': 'invalid_context_path',
+            'message': f'Ruta de build inválida: {context_path}'
+        }), 400
 
-    # 5. Crear nuevo contenedor desde la misma imagen
+    # 5. Build nueva imagen
     try:
-        image_id = container.image.id
-        new_container = docker_client.containers.create(
-            image=image_id,
-            name=container_name,
-            user = "viewer", 
-            network='app-network'
-        )
-    except docker_errors.APIError as e:
-        return jsonify({'success': False, 'error': 'recreate_failed', 'message': str(e)}), 500
+        print(f"[REBUILD] Build nueva imagen container_id={container_id} name={container_name} context={context_path}", flush=True)
+        try:
+            image, build_logs = docker_client.images.build(
+                path=context_path,
+                tag=container_name,
+                rm=True,
+                buildargs=build_args,
+                nocache=True
+            )
+            print(f"[REBUILD] Build OK image_id={image.id}", flush=True)
+        except docker_errors.BuildError as e:
+            print(f"[REBUILD][ERROR] BuildError: {e}", flush=True)
+            return jsonify({
+                'success': False,
+                'error': 'image_build_error',
+                'message': str(e)
+            }), 500
+        except docker_errors.APIError as e:
+            print(f"[REBUILD][ERROR] Docker API error (build): {e}", flush=True)
+            return jsonify({
+                'success': False,
+                'error': 'docker_api_error',
+                'message': str(e)
+            }), 500
 
-    # 6. Iniciar contenedor
-    try:
-        new_container.start()
-        new_container.reload()
-    except docker_errors.APIError as e:
-        return jsonify({'success': False, 'error': 'start_failed', 'message': str(e)}), 500
+        # 6. Crear nuevo contenedor (sin iniciar)
+        print(f"[REBUILD] Creando contenedor para image_id={image.id}", flush=True)
+        try:
+            new_container = docker_client.containers.create(
+                image.id,
+                name=container_name,
+                network='app-network',
+                **create_kwargs
+            )
+            print(f"[REBUILD] Contenedor creado id={new_container.id}", flush=True)
+            _cleanup_dangling_images()
+        except docker_errors.APIError as e:
+            print(f"[REBUILD][ERROR] Docker API error (create): {e}", flush=True)
+            return jsonify({
+                'success': False,
+                'error': 'docker_api_error',
+                'message': str(e)
+            }), 500
+        except Exception as e:
+            print(f"[REBUILD][ERROR] Exception creando contenedor: {e}", flush=True)
+            return jsonify({
+                'success': False,
+                'error': 'container_create_error',
+                'message': str(e)
+            }), 500
 
-    # 7. Resultado
-    return jsonify({
-        'success': True,
-        'message': f'Container {container_id} reiniciado correctamente',
-        'data': {
-            'containerId': container_id,
-            'dockerName': container_name,
-            'newContainerId': new_container.id,
-            'status': new_container.status
-        }
-    }), 200
+        return jsonify({
+            'success': True,
+            'message': f'Container {container_id} reconstruido (no iniciado)',
+            'data': {
+                'containerId': container_id,
+                'dockerName': container_name,
+                'imageId': image.id,
+                'createdContainerId': new_container.id,
+                'started': False,
+                'repoUrl': repo_url or None,
+                'rebuilt': True
+            }
+        }), 200
+    finally:
+        if tmp_dir and os.path.isdir(tmp_dir):
+            try:
+                shutil.rmtree(tmp_dir)
+                print(f"[REBUILD] Limpiado tmp_dir={tmp_dir}", flush=True)
+            except Exception as cleanup_err:
+                print(f"[REBUILD][WARN] No se pudo limpiar {tmp_dir}: {cleanup_err}", flush=True)
+
+    
 
 @container_bp.route('/containers/<container_id>/create', methods=['POST'])
 @jwt_required()
