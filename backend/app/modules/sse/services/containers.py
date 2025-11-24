@@ -108,7 +108,12 @@ def get_real_container_status(container_name: str) -> str:
 
 def get_container_metrics(container_name: str) -> Dict:
     """
-    Obtener métricas para el contenedor
+    Obtener métricas REALES del contenedor usando Docker stats.
+    - cpu: porcentaje de uso CPU aproximado
+    - memory: uso de memoria (MB)
+    - requests: se aproxima usando paquetes RX (si existe red) como indicador
+    - uptime: tiempo desde que inició el contenedor
+    - lastActivity: timestamp actual UTC
     """
     try:
         status = get_real_container_status(container_name)
@@ -121,13 +126,92 @@ def get_container_metrics(container_name: str) -> Dict:
                 'uptime': "0h 0m",
                 'lastActivity': datetime.utcnow().isoformat() + 'Z'
             }
-        
-        # Métricas simuladas para running
+        # Obtener contenedor real
+        containers = docker_client.containers.list(all=True, filters={'name': container_name})
+        if not containers:
+            return {
+                'cpu': 0,
+                'memory': 0,
+                'requests': 0,
+                'uptime': "0h 0m",
+                'lastActivity': datetime.utcnow().isoformat() + 'Z'
+            }
+        container = containers[0]
+
+        # Stats del contenedor (stream=False para única lectura)
+        stats = container.stats(stream=False)
+
+        # Calcular CPU % (delta basado en precpu)
+        cpu_percent = 0.0
+        try:
+            cpu_stats = stats.get('cpu_stats', {})
+            precpu_stats = stats.get('precpu_stats', {})
+            cpu_usage = cpu_stats.get('cpu_usage', {})
+            pre_cpu_usage = precpu_stats.get('cpu_usage', {})
+            total_usage = cpu_usage.get('total_usage', 0)
+            pre_total_usage = pre_cpu_usage.get('total_usage', 0)
+            system_cpu_usage = cpu_stats.get('system_cpu_usage', 0)
+            pre_system_cpu_usage = precpu_stats.get('system_cpu_usage', 0)
+            cpu_delta = total_usage - pre_total_usage
+            system_delta = system_cpu_usage - pre_system_cpu_usage
+            online_cpus = cpu_stats.get('online_cpus') or len(cpu_usage.get('percpu_usage', []) or []) or 1
+            if cpu_delta > 0 and system_delta > 0:
+                cpu_percent = (cpu_delta / system_delta) * online_cpus * 100.0
+        except Exception:
+            cpu_percent = 0.0
+
+        # Calcular memoria (MB)
+        mem_mb = 0
+        try:
+            mem_stats = stats.get('memory_stats', {})
+            mem_usage = mem_stats.get('usage', 0)
+            mem_mb = int(mem_usage / (1024 * 1024))
+        except Exception:
+            mem_mb = 0
+
+        # Requests aproximados: usar paquetes recibidos totales de redes
+        requests_count = 0
+        try:
+            networks = stats.get('networks', {})
+            for net_name, net_vals in networks.items():
+                requests_count += net_vals.get('rx_packets', 0)
+        except Exception:
+            requests_count = 0
+
+        # Uptime: calcular desde StartedAt
+        uptime_str = "0h 0m"
+        try:
+            started_at = container.attrs.get('State', {}).get('StartedAt')
+            if started_at:
+                # Formato ISO con Z y posible nanosegundos. Cortar para strptime.
+                # Ej: '2025-11-23T18:22:33.123456789Z'
+                clean = started_at.rstrip('Z')
+                # Limitar microsegundos a 6 dígitos
+                if '.' in clean:
+                    date_part, frac = clean.split('.')
+                    clean = f"{date_part}.{frac[:6]}"
+                from datetime import timezone
+                try:
+                    started_dt = datetime.strptime(clean, '%Y-%m-%dT%H:%M:%S.%f')
+                except ValueError:
+                    try:
+                        started_dt = datetime.strptime(clean, '%Y-%m-%dT%H:%M:%S')
+                    except ValueError:
+                        started_dt = datetime.utcnow()
+                started_dt = started_dt.replace(tzinfo=timezone.utc)
+                now = datetime.utcnow().replace(tzinfo=timezone.utc)
+                delta = now - started_dt
+                hours = delta.seconds // 3600 + delta.days * 24
+                minutes = (delta.seconds % 3600) // 60
+                uptime_str = f"{hours}h {minutes}m"
+        except Exception:
+            uptime_str = "0h 0m"
+
         return {
-            'cpu': random.randint(5, 95),
-            'memory': random.randint(50, 512),
-            'requests': random.randint(0, 1000),
-            'uptime': f"{random.randint(0, 24)}h {random.randint(0, 59)}m",
+            'cpu': round(cpu_percent, 2),
+            'memory': mem_mb,
+            'requests': requests_count,
+            'uptime': uptime_str,
             'lastActivity': datetime.utcnow().isoformat() + 'Z'
         }
         

@@ -294,6 +294,10 @@ def restart_container(container_id):
             new_container = docker_client.containers.create(
                 image.id,
                 name=container_name,
+                mem_limit="512m",
+                memswap_limit="1024m",
+                cpu_quota=100000,
+                cpu_period=100000,
                 network='app-network',
                 **create_kwargs
             )
@@ -438,7 +442,16 @@ def create_container(container_id):
         print(f"[CREATE] Creando contenedor para image_id={image.id}", flush=True)
         try:
             create_kwargs = payload.get('createOptions') or {}
-            container_obj = docker_client.containers.create(image.id, name=container_name, network='app-network',  **create_kwargs)
+            container_obj = docker_client.containers.create(
+                image.id,
+                name=container_name,
+                mem_limit="512m",
+                memswap_limit="1024m",
+                cpu_quota=100000,
+                cpu_period=100000,
+                network='app-network',
+                **create_kwargs
+            )
             print(f"[CREATE] Contenedor creado id={container_obj.id}", flush=True)
             # Limpieza de imágenes dangling (<none>) generadas por el build
             _cleanup_dangling_images()
