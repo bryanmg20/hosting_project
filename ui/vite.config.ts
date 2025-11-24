@@ -54,6 +54,8 @@
       outDir: 'build',
     },
     server: {
+      allowedHosts: ['ui.localhost', 'ui'],
+      host: true,          // importante para docker
       port: 3000,
       open: true,
     },
