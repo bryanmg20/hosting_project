@@ -8,6 +8,21 @@ from docker import errors as docker_errors
 from app.modules.sse.services.containers import _container_name_cache, docker_client
 container_bp = Blueprint('container', __name__)
 
+# Helper opcional para limpiar imágenes "dangling" (<none>) generadas por builds multi-stage
+def _auto_prune_dangling_images():
+    if os.environ.get('AUTO_PRUNE_DANGLING', '0') != '1':
+        return
+    print('[PRUNE] Iniciando prune de imágenes dangling...', flush=True)
+    try:
+        result = docker_client.images.prune(filters={'dangling': True})
+        deleted = result.get('ImagesDeleted') or []
+        reclaimed = result.get('SpaceReclaimed')
+        print(f"[PRUNE] Eliminadas={len(deleted)} SpaceReclaimed={reclaimed} bytes", flush=True)
+    except docker_errors.APIError as e:
+        print(f"[PRUNE][ERROR] Docker API error: {e}", flush=True)
+    except Exception as e:
+        print(f"[PRUNE][ERROR] Exception: {e}", flush=True)
+
 @container_bp.route('/containers/<container_id>/start', methods=['POST'])
 @jwt_required()
 def start_container(container_id):
@@ -190,6 +205,7 @@ def restart_container(container_id):
         new_container = docker_client.containers.create(
             image=image_id,
             name=container_name,
+            user = "viewer", 
             network='app-network'
         )
     except docker_errors.APIError as e:
@@ -352,4 +368,6 @@ def create_container(container_id):
                 print(f"[CREATE] Limpiado tmp_dir={tmp_dir}", flush=True)
             except Exception as cleanup_err:
                 print(f"[CREATE][WARN] No se pudo limpiar {tmp_dir}: {cleanup_err}", flush=True)
+        # Prune de imágenes dangling (si habilitado)
+        _auto_prune_dangling_images()
 
