@@ -5,6 +5,7 @@ import tempfile
 import subprocess
 import shutil
 from docker import errors as docker_errors
+import traceback
 from app.modules.sse.services.containers import _container_name_cache, docker_client
 # Nota: No importar delete_project aquí. Rebuild NO elimina el proyecto, sólo reconstruye su contenedor.
 container_bp = Blueprint('container', __name__)
@@ -181,11 +182,18 @@ def restart_container(container_id):
             'message': f'No existe entry en cache para id {container_id}. Actualiza lista primero.'
         }), 404
 
+    print(f"[REBUILD][DEBUG] cache_entry={cache_entry!r}", flush=True)
+
     container_name = cache_entry.get('name') or f'project_{container_id}'
     repo_url = payload.get('repoUrl') or cache_entry.get('githuburl') or ''
     context_path = payload.get('contextPath')
     build_args = payload.get('buildArgs') or {}
     create_kwargs = payload.get('createOptions') or {}
+
+    print(f"[REBUILD][DEBUG] repo_url={repo_url!r}", flush=True)
+    print(f"[REBUILD][DEBUG] context_path(before clone)={context_path!r}", flush=True)
+    print(f"[REBUILD][DEBUG] build_args={build_args!r}", flush=True)
+    print(f"[REBUILD][DEBUG] create_kwargs(initial)={create_kwargs!r}", flush=True)
 
     # 2. Detener / eliminar contenedor existente
     existing_image_id = None
@@ -291,6 +299,7 @@ def restart_container(container_id):
         # 6. Crear nuevo contenedor (sin iniciar)
         print(f"[REBUILD] Creando contenedor para image_id={image.id}", flush=True)
         try:
+            print(f"[REBUILD][DEBUG] create_kwargs={create_kwargs!r}", flush=True)
             new_container = docker_client.containers.create(
                 image.id,
                 name=container_name,
@@ -312,6 +321,7 @@ def restart_container(container_id):
             }), 500
         except Exception as e:
             print(f"[REBUILD][ERROR] Exception creando contenedor: {e}", flush=True)
+            print(traceback.format_exc(), flush=True)
             return jsonify({
                 'success': False,
                 'error': 'container_create_error',
@@ -442,6 +452,7 @@ def create_container(container_id):
         print(f"[CREATE] Creando contenedor para image_id={image.id}", flush=True)
         try:
             create_kwargs = payload.get('createOptions') or {}
+            print(f"[CREATE][DEBUG] create_kwargs={create_kwargs!r}", flush=True)
             container_obj = docker_client.containers.create(
                 image.id,
                 name=container_name,
@@ -464,6 +475,8 @@ def create_container(container_id):
             }), 500
         except Exception as e:
             print(f"[CREATE][ERROR] Exception creando contenedor: {e}", flush=True)
+            import traceback as _tb
+            print(_tb.format_exc(), flush=True)
             return jsonify({
                 'success': False,
                 'error': 'container_create_error',

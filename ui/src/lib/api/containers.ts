@@ -66,7 +66,7 @@ export const rebuildContainer = async (id: string): Promise<void> => {
   await apiClient.post(
     `/containers/${id}/rebuild`,
     {},
-    { requiresAuth: true }
+    { requiresAuth: true, timeout: 600000 } // 600s
   );
 };
 
