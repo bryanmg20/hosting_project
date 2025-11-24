@@ -6,7 +6,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Plus, AlertCircle, Loader2, FolderOpen } from 'lucide-react';
-import { Project, getProjects, startContainer, stopContainer, createContainer, deleteProject } from '../../lib/api';
+import { Project, getProjects, startContainer, stopContainer, createContainer, deleteProject, ApiClientError } from '../../lib/api';
 import { toast } from 'sonner@2.0.3';
 import { useSSE } from '../../lib/sse-context';
 
@@ -100,9 +100,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       // El SSE actualizará el estado a "running" o "exited" automáticamente
       // No necesitamos refetch completo
     } catch (err) {
-      toast.error('Failed to create container');
-      // Revertir a unknown en caso de error
-      updateContainerStatus(id, 'unknown');
+      if (err instanceof ApiClientError && err.statusCode === 408) {
+        // Timeout: el build sigue en background
+        toast.warning('Build en curso', {
+          description: 'La construcción excedió el tiempo de espera pero continúa en el servidor.'
+        });
+        // Mantener estado deploying hasta que SSE actualice
+        updateContainerStatus(id, 'deploying');
+      } else if (err instanceof ApiClientError && err.statusCode === 0) {
+        toast.error('Network error durante creación');
+        updateContainerStatus(id, 'unknown');
+      } else {
+        toast.error('Failed to create container');
+        updateContainerStatus(id, 'unknown');
+      }
     } finally {
       setActionLoading(null);
     }
