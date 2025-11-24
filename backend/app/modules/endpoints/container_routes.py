@@ -6,6 +6,7 @@ import subprocess
 import shutil
 from docker import errors as docker_errors
 from app.modules.sse.services.containers import _container_name_cache, docker_client
+from app.modules.sse.services.auto_shutdown_service import reset_container_activity
 # Nota: No importar delete_project aquí. Rebuild NO elimina el proyecto, sólo reconstruye su contenedor.
 container_bp = Blueprint('container', __name__)
 
@@ -67,6 +68,8 @@ def start_container(container_id):
         if container_obj.status != 'running':
             container_obj.start()
             message = f'Container {container_name} iniciado correctamente'
+            # Resetear tracking de inactividad cuando se inicia manualmente
+            reset_container_activity(container_name)
         else:
             message = f'Container {container_name} ya estaba en ejecución'
 

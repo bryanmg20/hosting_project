@@ -48,4 +48,8 @@ def create_app():
     app.register_blueprint(container_bp)
     app.register_blueprint(dynamic_bp)
     
+    # Iniciar servicio de auto-apagado por inactividad
+    from app.modules.sse.services.auto_shutdown_service import start_auto_shutdown_service
+    start_auto_shutdown_service()
+    
     return app
