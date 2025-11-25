@@ -162,8 +162,15 @@ def get_containers_metrics(user_email: str) -> List[Dict]:
     containers = _current_containers.get(user_email, [])
     
     for container in containers:
+        if not isinstance(container, dict):
+            continue
+            
         container_id = container.get('_id')
-        container_name = _container_name_cache.get(container_id, container_id).get('name', container_id)
+        
+        # Fix: Evitar error 'str object has no attribute get' cuando no está en caché
+        # Usar {} como valor por defecto para asegurar que siempre tratamos con un dict
+        cache_entry = _container_name_cache.get(container_id, {})
+        container_name = cache_entry.get('name', container_id)
         
         if container_id:
             # Obtener métricas sin importar el estado

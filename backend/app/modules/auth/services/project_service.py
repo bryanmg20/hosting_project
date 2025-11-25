@@ -17,7 +17,7 @@ class ProjectService(UserService):
             
             # 3. Procesar respuesta
             if isinstance(response, list):
-                print(f"📊 Proyectos encontrados para {email}: {len(response)}", flush=True)
+                #print(f"📊 Proyectos encontrados para {email}: {len(response)}", flush=True)
                 return {'success': True, 'projects': response}
             else:
                 return {'success': True, 'projects': []}
