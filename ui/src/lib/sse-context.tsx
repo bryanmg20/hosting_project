@@ -157,7 +157,7 @@ export const SSEProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (sseStatus === 'disconnected' && token) {
       reconnectTimeoutRef.current = setTimeout(() => {
         connectSSE();
-      }, 30000); // Reintentar después de 3 segundos
+      }, 10000); // Reintentar después de 10 segundos
     }
   }, [sseStatus, connectSSE]);
 

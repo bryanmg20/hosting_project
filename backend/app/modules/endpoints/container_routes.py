@@ -1,13 +1,15 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import get_jwt_identity, jwt_required
 import os
 import tempfile
 import subprocess
 import shutil
 from docker import errors as docker_errors
 import traceback
-from app.modules.sse.services.containers import _container_name_cache, docker_client
+from app.modules.sse.services.state import _container_name_cache
+from app.modules.sse.services.docker_service import docker_client
 from app.modules.sse.services.auto_shutdown_service import reset_container_activity
+from backend.app.modules.project.responses import error_response
 # Nota: No importar delete_project aquí. Rebuild NO elimina el proyecto, sólo reconstruye su contenedor.
 container_bp = Blueprint('container', __name__)
 
@@ -42,6 +44,9 @@ def start_container(container_id):
     3. Si está detenido -> start()
     4. Devuelve estado.
     """
+    sub = get_jwt_identity()
+    if not sub:
+        return error_response('User not authenticated', 401)
 
     cache_entry = _container_name_cache.get(container_id)
     if not cache_entry:
@@ -105,6 +110,10 @@ def stop_container(container_id):
     """
     Detiene un contenedor previamente creado y/o iniciado.
     """
+    sub = get_jwt_identity()
+    if not sub:
+        return error_response('User not authenticated', 401)
+    
     cache_entry = _container_name_cache.get(container_id)
     if not cache_entry:
         return jsonify({
@@ -175,6 +184,9 @@ def restart_container(container_id):
     7. Limpiar dangling images y tmp dir.
     8. Responder con datos de nuevo contenedor.
     """
+    sub = get_jwt_identity()
+    if not sub:
+        return error_response('User not authenticated', 401)
 
     payload = request.get_json(silent=True) or {}
     cache_entry = _container_name_cache.get(container_id)
@@ -368,6 +380,9 @@ def create_container(container_id):
     4. Elimina contenedor previo con mismo nombre (si existe) y crea uno nuevo detached.
     5. Devuelve id de imagen y contenedor.
     """
+    sub = get_jwt_identity()
+    if not sub:
+        return error_response('User not authenticated', 401)
     
 
     payload = request.get_json(silent=True) or {}

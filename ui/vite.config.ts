@@ -55,8 +55,7 @@
     },
     server: {
       allowedHosts: ['ui.localhost', 'ui'],
-      host: true,          // importante para docker
+      host: '0.0.0.0',          // importante para docker
       port: 3000,
-      open: true,
     },
   });

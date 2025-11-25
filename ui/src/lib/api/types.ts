@@ -9,7 +9,7 @@
 export interface Project {
   id: string;
   name: string;
-  status: 'running' | 'exited' | 'deploying' | 'error' | 'unknown';
+  status: 'running' | 'exited' | 'deploying' | 'error' | 'unknown' | 'created';
   url: string;
   github_url: string;
   created_at: string;

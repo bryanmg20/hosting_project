@@ -110,10 +110,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       } else if (err instanceof ApiClientError && err.statusCode === 0) {
         toast.error('Network error durante creación');
         updateContainerStatus(id, 'unknown');
-      } else {
+      }
+       else if (err instanceof ApiClientError && err.statusCode === 400) {
+        toast.error('Private repository access error');
+        updateContainerStatus(id, 'unknown');
+      }
+       else {
         toast.error('Failed to create container');
         updateContainerStatus(id, 'unknown');
       }
+
     } finally {
       setActionLoading(null);
     }

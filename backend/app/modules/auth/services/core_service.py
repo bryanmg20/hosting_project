@@ -58,9 +58,9 @@ class AuthCoreService:
         self.user_service.store_roble_tokens(email, roble_access_token, roble_refresh_token)
         
         # 3. Obtener datos del usuario
-        print("obtener username",  flush=True)
+       
         user_data = self._get_user_data(email)
-        print("obtenido username",  flush=True)
+    
         # 4. Generar JWT tokens
         additional_claims = {'name': user_data['name'], 'email': email}
         access_token = create_access_token(identity=email, additional_claims=additional_claims)

@@ -14,10 +14,10 @@ _tracker_lock = threading.Lock()
 
 # Configuración
 # Tiempo de inactividad permitido antes de detener el contenedor (30 minutos)
-INACTIVITY_THRESHOLD_SECONDS = 30 * 60  # 1800 segundos
+INACTIVITY_THRESHOLD_SECONDS = 1800  # 1800 segundos
 
 # Intervalo entre cada chequeo del monitor (10 minutos)
-CHECK_INTERVAL_SECONDS = 10 * 60  # 600 segundos
+CHECK_INTERVAL_SECONDS = 10  # 10 segundos
 
 # Flag para detener el servicio
 _shutdown_flag = False
@@ -26,10 +26,10 @@ _shutdown_flag = False
 INFRASTRUCTURE_CONTAINERS = {
     'hosting_project-backend-1',
     'hosting_project-ui-1', 
-    'hosting_project-caddy-1',
+    'hosting_project-nginx-1',
     'backend-1',
     'ui-1',
-    'caddy-1'
+    'nginx-1'
 }
 
 
@@ -79,7 +79,7 @@ def check_and_stop_inactive_containers():
     """
     Revisa contenedores de proyectos de usuario y detiene los que llevan 
     INACTIVITY_THRESHOLD_SECONDS sin actividad de red.
-    Excluye contenedores de infraestructura (backend, ui, caddy).
+    Excluye contenedores de infraestructura (backend, ui, nginx).
     """
     try:
         # Obtener todos los contenedores running
@@ -92,7 +92,7 @@ def check_and_stop_inactive_containers():
             
             # Saltar contenedores de infraestructura
             if not is_user_project_container(container_name):
-                print(f"[AUTO_SHUTDOWN] Saltando contenedor de infraestructura: {container_name}", flush=True)
+                #print(f"[AUTO_SHUTDOWN] Saltando contenedor de infraestructura: {container_name}", flush=True)
                 continue
             
             # Obtener rx_bytes actual
