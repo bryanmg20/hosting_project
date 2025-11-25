@@ -18,6 +18,11 @@ const statusConfig = {
     className: 'bg-gray-500 hover:bg-gray-600 text-white',
     dotColor: 'bg-gray-300',
   },
+  created: {
+    label: 'Created',
+    className: 'bg-blue-500 hover:bg-blue-600 text-white',
+    dotColor: 'bg-blue-300',
+  },
   deploying: {
     label: 'Deploying',
     className: 'bg-yellow-500 hover:bg-yellow-600 text-white',

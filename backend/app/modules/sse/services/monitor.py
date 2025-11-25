@@ -85,7 +85,7 @@ def monitor_containers_events(user_email: str):
                     elif action == 'die' or action == 'stop' or action == 'kill':
                         new_status = 'exited'
                     elif action == 'create':
-                        new_status = 'inactive' # o created
+                        new_status = 'created' # o created
                     elif action == 'pause':
                         new_status = 'inactive'
                     elif action == 'destroy':

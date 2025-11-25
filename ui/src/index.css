@@ -1299,6 +1299,9 @@
   .bg-red-500 {
     background-color: var(--color-red-500);
   }
+  .bg-blue-500{
+    background-color: var(--color-blue-500);
+  }
 
   .bg-secondary {
     background-color: var(--secondary);

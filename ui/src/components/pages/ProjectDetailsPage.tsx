@@ -65,6 +65,11 @@ const statusConfig = {
     className: 'bg-yellow-500 text-white',
     dotColor: 'bg-yellow-500',
   },
+  created: {
+    label: 'Created',
+    className: 'bg-blue-500 hover:bg-blue-600 text-white',
+    dotColor: 'bg-blue-300',
+  },
   error: {
     label: 'Error',
     icon: <AlertCircle className="w-4 h-4" />,
@@ -354,7 +359,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
                     )}
                     Create Container
                   </Button>
-                ) : currentStatus === 'exited' || currentStatus === 'inactive' ? (
+                ) : currentStatus === 'exited' || currentStatus === 'inactive' || currentStatus === 'created' ? (
                   <>
                     <Button onClick={handleStart} disabled={actionLoading}>
                       {actionLoading ? (
