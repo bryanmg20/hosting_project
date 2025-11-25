@@ -92,7 +92,7 @@ def check_and_stop_inactive_containers():
             
             # Saltar contenedores de infraestructura
             if not is_user_project_container(container_name):
-                print(f"[AUTO_SHUTDOWN] Saltando contenedor de infraestructura: {container_name}", flush=True)
+                #print(f"[AUTO_SHUTDOWN] Saltando contenedor de infraestructura: {container_name}", flush=True)
                 continue
             
             # Obtener rx_bytes actual
