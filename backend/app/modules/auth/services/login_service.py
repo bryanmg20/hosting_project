@@ -30,13 +30,15 @@ class LoginService(BaseAuthService):
         """Registro directo sin verificación de email"""
         try:
             url = f"{self.auth_url}/{self.db_name}/signup-direct"
-
+            print(url, flush=True)
             # Petición genérica usando la función base
             data = self._request("POST", url, json={
                 'email': email,
                 'password': password,
                 'name': name
             })
+            print("data:")
+            print(data, flush=True)
 
             # Si no lanza excepción, es éxito
             return {
@@ -46,6 +48,7 @@ class LoginService(BaseAuthService):
 
         except Exception as e:
             # Captura cualquier error o código no 2xx
+            print("error", flush=True)
             return {
                 'success': False,
                 'error': str(e)
