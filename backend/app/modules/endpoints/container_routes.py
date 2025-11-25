@@ -6,7 +6,8 @@ import subprocess
 import shutil
 from docker import errors as docker_errors
 import traceback
-from app.modules.sse.services.containers import _container_name_cache, docker_client
+from app.modules.sse.services.state import _container_name_cache
+from app.modules.sse.services.docker_service import docker_client
 from app.modules.sse.services.auto_shutdown_service import reset_container_activity
 # Nota: No importar delete_project aquí. Rebuild NO elimina el proyecto, sólo reconstruye su contenedor.
 container_bp = Blueprint('container', __name__)

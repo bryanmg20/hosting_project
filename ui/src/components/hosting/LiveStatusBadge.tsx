@@ -33,6 +33,11 @@ const statusConfig = {
     className: 'bg-red-500 hover:bg-red-600 text-white',
     dotColor: 'bg-red-300',
   },
+  removing: {
+    label: 'Removing',
+    className: 'bg-red-500 hover:bg-red-600 text-white',
+    dotColor: 'bg-red-300',
+  },
   unknown: {
     label: 'Unknown',
     className: 'bg-gray-400 hover:bg-gray-500 text-white',

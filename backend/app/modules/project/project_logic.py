@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
-from app.modules.sse.services.containers import extract_container_name_from_url, get_real_container_status
-
+from app.modules.sse.services.utils import extract_container_name_from_url
+from app.modules.sse.services.docker_service import get_real_container_status
 def generate_project_id():
     return f"proj-{uuid.uuid4().hex[:8]}"
 
