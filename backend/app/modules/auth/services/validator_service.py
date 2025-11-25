@@ -17,7 +17,7 @@ class AuthValidatorService:
             r'^(?=.*[a-z])'        
             r'(?=.*[A-Z])'         
             r'(?=.*\d)'            
-            r'(?=.*[@$!%*?&._\-])' 
+            r'(?=.*[!@#$_-])' 
         )
         return re.search(pattern, password) is not None
     
@@ -40,7 +40,7 @@ class AuthValidatorService:
         
         if not self.validate_password_chars(password):
             return {'valid': False, 'error': (
-                    'Password must include uppercase, lowercase, number and special character.')}
+                    'Password must include uppercase, lowercase, number and special character (!, @, #, $, _, -).')}
         
         return {'valid': True, 'email': email, 'password': password, 'name': name}
     

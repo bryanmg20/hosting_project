@@ -46,9 +46,24 @@ class LoginService(BaseAuthService):
             error_detail = str(e)
             if hasattr(e, 'response') and e.response is not None:
                 try:
-                    error_detail = e.response.json()
+                    json_error = e.response.json()
+
+                    # Si el JSON tiene "message", procesamos solo ese caso
+                    if isinstance(json_error, dict) and "message" in json_error:
+                        backend_msg = json_error["message"]
+
+                        # Caso específico: correo ya registrado
+                        if backend_msg == "El correo ya está registrado":
+                            error_detail = "Email is already registered"
+                        else:
+                            error_detail = backend_msg
+
+                    else:
+                        error_detail = json_error
+
                 except ValueError:
                     error_detail = e.response.text
+                    
             if isinstance(error_detail, dict):
                 error_detail = json.dumps(error_detail, ensure_ascii=False)
 
