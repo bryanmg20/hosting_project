@@ -1,8 +1,8 @@
 # app/modules/sse/routes/sse_routes.py
 from flask import Blueprint, Response, request, jsonify
 from flask_jwt_extended import jwt_required, decode_token, get_jwt_identity
-from app.modules.sse.services.state import update_user_containers
-from app.modules.sse.services.monitor import monitor_containers_events
+from app.modules.sse.state import update_user_containers
+from app.modules.sse.monitor import monitor_containers_events
 
 import json
 import time

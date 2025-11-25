@@ -1,5 +1,5 @@
 from typing import Dict, List
-from app.modules.sse.services.utils import extract_container_name_from_url
+from app.modules.sse.utils import extract_container_name_from_url
 
 # Estado global para persistencia
 _current_containers = {}  # {user_email: [container_list]}
@@ -10,7 +10,7 @@ def update_user_containers(user_email: str) -> bool:
     Actualizar la lista de contenedores desde la base de datos usando project_service
     """
     try:
-        from app.modules.auth.services.project_service import project_service
+        from app.modules.auth.project_service import project_service
         
         containers_result = project_service.get_user_projects(user_email)
        

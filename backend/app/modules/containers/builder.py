@@ -8,8 +8,8 @@ import subprocess
 import shutil
 import traceback as _tb
 from docker import errors as docker_errors
-from app.modules.sse.services.state import _container_name_cache
-from app.modules.sse.services.docker_service import docker_client
+from app.modules.sse.state import _container_name_cache
+from app.modules.sse.docker_service import docker_client
 from .utils import cleanup_dangling_images
 
 

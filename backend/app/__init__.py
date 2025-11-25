@@ -3,6 +3,7 @@ from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
+from app.modules.sse.auto_shutdown_service import start_auto_shutdown_service
 import os
 
 def create_app():
@@ -49,7 +50,7 @@ def create_app():
     app.register_blueprint(dynamic_bp)
     
     # Iniciar servicio de auto-apagado por inactividad
-    from app.modules.sse.services.auto_shutdown_service import start_auto_shutdown_service
+   
     start_auto_shutdown_service()
     
     return app

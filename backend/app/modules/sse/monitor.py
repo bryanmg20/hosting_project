@@ -3,9 +3,9 @@ import threading
 import time
 import docker
 from datetime import datetime
-from app.modules.sse.services.state import _current_containers, _container_name_cache
-from app.modules.sse.services.utils import extract_container_name_from_url
-from app.modules.sse.services.docker_service import get_containers_metrics
+from app.modules.sse.state import _current_containers, _container_name_cache
+from app.modules.sse.utils import extract_container_name_from_url
+from app.modules.sse.docker_service import get_containers_metrics
 
 def monitor_containers_events(user_email: str):
     """

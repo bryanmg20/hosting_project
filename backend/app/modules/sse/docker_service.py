@@ -1,7 +1,7 @@
 import docker
 from datetime import datetime
 from typing import Dict, List
-from app.modules.sse.services.state import _current_containers, _container_name_cache
+from app.modules.sse.state import _current_containers, _container_name_cache
 
 # Cliente Docker
 docker_client = docker.from_env()

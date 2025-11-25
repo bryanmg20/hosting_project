@@ -4,9 +4,9 @@ Operaciones de ciclo de vida de contenedores: start, stop.
 """
 from flask import jsonify
 from docker import errors as docker_errors
-from app.modules.sse.services.state import _container_name_cache
-from app.modules.sse.services.docker_service import docker_client
-from app.modules.sse.services.auto_shutdown_service import reset_container_activity
+from app.modules.sse.state import _container_name_cache
+from app.modules.sse.docker_service import docker_client
+from app.modules.sse.auto_shutdown_service import reset_container_activity
 
 
 def start_container_logic(container_id):

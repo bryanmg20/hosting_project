@@ -2,7 +2,7 @@
 """
 Utilidades para la gestión de contenedores e imágenes Docker.
 """
-from app.modules.sse.services.docker_service import docker_client
+from app.modules.sse.docker_service import docker_client
 
 
 def cleanup_dangling_images():

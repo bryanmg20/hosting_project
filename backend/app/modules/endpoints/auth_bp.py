@@ -1,11 +1,10 @@
 from flask import Blueprint, request,jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt, create_access_token
-
-from app.modules.auth.services.core_service import AuthCoreService
-from app.modules.auth.services.validator_service import AuthValidatorService
-from app.modules.auth.services.response_service import AuthResponseService
-from app.modules.auth.services.login_service import login_service
-from app.modules.auth.services.user_service import user_service
+from app.modules.auth.core_service import AuthCoreService
+from app.modules.auth.validator_service import AuthValidatorService
+from app.modules.auth.response_service import AuthResponseService
+from app.modules.auth.login_service import login_service
+from app.modules.auth.user_service import user_service
 
 # Crear Blueprint
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
