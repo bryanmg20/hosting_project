@@ -96,7 +96,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               <p className="mt-1">{Math.round(currentMetrics.memory)} MB</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Requests</p>
+              <p className="text-muted-foreground">rxPackets</p>
               <p className="mt-1">{currentMetrics.requests}</p>
             </div>
           </div>
