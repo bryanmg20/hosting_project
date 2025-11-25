@@ -35,17 +35,17 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
     setError('');
 
     if (!name.trim()) {
-      setError('El nombre de usuario es requerido');
+      setError('Username is required');
       return;
     }
 
     if (name.length < 3) {
-      setError('El nombre de usuario debe tener al menos 3 caracteres');
+      setError('Username must be at least 3 characters long');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden');
+      setError('Passwords do not match');
       return;
     }
 
@@ -56,14 +56,14 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onSwitchToLogin }) =
       await registerOnly(email, password, name);
       
       // Mostrar mensaje de éxito
-      toast.success('¡Cuenta creada exitosamente!', {
-        description: 'Ahora puedes iniciar sesión con tus credenciales.'
+      toast.success('Account created successfully!', {
+        description: 'You can now log in with your credentials.'
       });
       
       // Redirigir a login con el email prellenado
       onSwitchToLogin(email);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al registrarse');
+      setError(err instanceof Error ? err.message : 'Registration error');
       setLoading(false);
     }
   };
