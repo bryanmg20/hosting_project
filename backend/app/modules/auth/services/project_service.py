@@ -61,7 +61,7 @@ class ProjectService(UserService):
            
             # 5. Usar el método genérico _request
             response = self._request('POST', insert_url, headers=headers, json=insert_data)
-            
+            print(response, flush = True)
             if isinstance(response, dict) and 'inserted' in response:
                 if response['inserted'] and len(response['inserted']) > 0:
                     created_project = response['inserted'][0]
@@ -70,7 +70,10 @@ class ProjectService(UserService):
                 else:
                     # Verificar si hay errores en skipped
                     if response.get('skipped'):
+                        
                         error_msg = response['skipped'][0].get('reason', 'Unknown error')
+                        if error_msg == 'duplicate key value violates unique constraint "projects_pkey"':
+                            return {'success': False, 'error': 'this name project already exists'}
                         return {'success': False, 'error': error_msg}
                     return {'success': False, 'error': 'Failed to create project'}
             else:
