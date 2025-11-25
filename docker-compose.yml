@@ -2,10 +2,6 @@ services:
   backend:
     build: ./backend
     environment:
-      - FLASK_APP
-      - FLASK_ENV
-      - SECRET_KEY
-      - JWT_SECRET_KEY
       - ROBLE_DB_NAME
     volumes:
       - ./backend:/app
@@ -27,15 +23,13 @@ services:
     networks:
       - app-network
 
-  caddy:
-    image: caddy:alpine
+  nginx:
+    image: nginx:1.25-alpine
     ports:
       - "80:80"
-      - "443:443"  
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
     depends_on:
       - ui
       - backend
@@ -50,3 +44,4 @@ networks:
   app-network:
     name: app-network
     driver: bridge
+    external: True

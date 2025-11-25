@@ -11,11 +11,13 @@ def create_app():
     # Configuración
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'Null')
     app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'Null')
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
-    app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes= 15)
+    app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=7)
     app.config['ROBLE_DB_NAME'] = os.environ.get('ROBLE_DB_NAME', 'Null')
     
-    CORS(app, resources={r"/*": {"origins": "*"}})
+    # CORS: permitir específicamente ui.localhost y opcionalmente credenciales
+    allowed_origins = ["http://ui.localhost", "http://localhost:3000"]
+    CORS(app, resources={r"/*": {"origins": allowed_origins}}, supports_credentials=True)
     
     # Inicializar JWT
     jwt = JWTManager(app)
@@ -36,7 +38,7 @@ def create_app():
     # Registrar blueprints
     from app.modules.endpoints.auth_bp import auth_bp
     from app.modules.endpoints.project_routes import project_bp
-    from app.modules.endpoints.container_routes import container_bp
+    from app.modules.endpoints.containers.routes import container_bp
     from app.modules.endpoints.see_routes import sse_bp
     from app.modules.endpoints.redirect import dynamic_bp
 
@@ -45,5 +47,9 @@ def create_app():
     app.register_blueprint(project_bp)
     app.register_blueprint(container_bp)
     app.register_blueprint(dynamic_bp)
+    
+    # Iniciar servicio de auto-apagado por inactividad
+    from app.modules.sse.services.auto_shutdown_service import start_auto_shutdown_service
+    start_auto_shutdown_service()
     
     return app

@@ -66,7 +66,7 @@ export const rebuildContainer = async (id: string): Promise<void> => {
   await apiClient.post(
     `/containers/${id}/rebuild`,
     {},
-    { requiresAuth: true }
+    { requiresAuth: true, timeout: 600000 } // 600s
   );
 };
 
@@ -74,9 +74,12 @@ export const rebuildContainer = async (id: string): Promise<void> => {
 // POST /api/containers/:id/create
 // ========================================
 export const createContainer = async (id: string): Promise<void> => {
+  // Construcción de imágenes (especialmente proyectos React con npm/yarn) puede exceder 30s.
+  // Aumentamos timeout para evitar AbortError que genera mensaje "Failed to create container"
+  // mientras el backend continúa construyendo correctamente.
   await apiClient.post(
     `/containers/${id}/create`,
     {},
-    { requiresAuth: true }
+    { requiresAuth: true, timeout: 600000 } // 600s
   );
 };

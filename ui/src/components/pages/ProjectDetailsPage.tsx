@@ -4,7 +4,6 @@ import { LiveStatusBadge } from '../hosting/LiveStatusBadge';
 import { LiveMetricsChart } from '../hosting/LiveMetricsChart';
 import { SSEIndicator } from '../hosting/SSEIndicator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Progress } from '../ui/progress';
@@ -24,9 +23,8 @@ import {
   Calendar,
   AlertCircle,
   Loader2,
-  Code2,
   RotateCw,
-  Plus,
+  PackagePlus,
 } from 'lucide-react';
 import {
   Project,
@@ -34,9 +32,10 @@ import {
   startContainer,
   stopContainer,
   deleteProject,
+  getContainerStatus,
   rebuildContainer,
-  normalizeUrl,
   createContainer,
+  normalizeUrl,
 } from '../../lib/api';
 import { toast } from 'sonner@2.0.3';
 import { useSSE, ContainerStatus } from '../../lib/sse-context';
@@ -55,7 +54,7 @@ const statusConfig = {
     dotColor: 'bg-green-500',
   },
   exited: {
-    label: 'exited',
+    label: 'Exited',
     icon: <Square className="w-4 h-4" />,
     className: 'bg-gray-500 text-white',
     dotColor: 'bg-gray-500',
@@ -66,11 +65,10 @@ const statusConfig = {
     className: 'bg-yellow-500 text-white',
     dotColor: 'bg-yellow-500',
   },
-  unknown: {
-    label: 'unknown',
-    icon: <Square className="w-4 h-4" />,
-    className: 'bg-gray-500 text-white',
-    dotColor: 'bg-gray-500',
+  created: {
+    label: 'Created',
+    className: 'bg-blue-500 hover:bg-blue-600 text-white',
+    dotColor: 'bg-blue-300',
   },
   error: {
     label: 'Error',
@@ -78,13 +76,18 @@ const statusConfig = {
     className: 'bg-red-500 text-white',
     dotColor: 'bg-red-500',
   },
-};
-
-const templateConfig = {
-  static: { label: 'Static Website', color: 'bg-blue-100 text-blue-800' },
-  react: { label: 'React Application', color: 'bg-cyan-100 text-cyan-800' },
-  flask: { label: 'Flask Backend', color: 'bg-purple-100 text-purple-800' },
-  nodejs: { label: 'Node.js Backend', color: 'bg-green-100 text-green-800' },
+  removing: {
+    label: 'Removing',
+    icon: <AlertCircle className="w-4 h-4" />,
+    className: 'bg-red-500 text-white',
+    dotColor: 'bg-red-500',
+  },
+  unknown: {
+    label: 'Unknown',
+    icon: <AlertCircle className="w-4 h-4" />,
+    className: 'bg-gray-400 text-white',
+    dotColor: 'bg-gray-400',
+  },
 };
 
 export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
@@ -165,7 +168,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
       
       toast.success('Container stopped successfully');
       
-      // El SSE actualizará el estado a "stopped" automáticamente
+      // El SSE actualizará el estado a "exited" automáticamente
       // No necesitamos refetch
     } catch (err) {
       toast.error('Failed to stop container');
@@ -173,31 +176,6 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
       setActionLoading(false);
     }
   };
-
-  // Agregar la función handleCreate (después de handleStop)
-const handleCreate = async () => {
-  if (!project) return;
-
-  try {
-    setActionLoading(true);
-    
-    // Actualizar estado optimista a "deploying"
-    updateContainerStatus(projectId, 'deploying');
-    
-    // API Call: POST /api/containers/:id/create
-    await createContainer(project.id);
-    
-    toast.success('Container created successfully');
-    
-    // El SSE actualizará el estado automáticamente
-  } catch (err) {
-    toast.error('Failed to create container');
-    // Revertir en caso de error
-    updateContainerStatus(projectId, 'unknown');
-  } finally {
-    setActionLoading(false);
-  }
-};
 
   const handleRebuild = async () => {
     if (!project) return;
@@ -223,6 +201,31 @@ const handleCreate = async () => {
       toast.error('Failed to rebuild container');
       // Revertir en caso de error
       updateContainerStatus(projectId, currentStatus || 'exited');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!project) return;
+
+    try {
+      setActionLoading(true);
+      
+      // Actualizar estado optimista a "deploying"
+      updateContainerStatus(projectId, 'deploying');
+      
+      // API Call: POST /api/containers/:id/create
+      await createContainer(project.id);
+      
+      toast.success('Container created successfully');
+      
+      // El SSE actualizará el estado a "running" o "exited" automáticamente
+      // No necesitamos refetch
+    } catch (err) {
+      toast.error('Failed to create container');
+      // Revertir en caso de error
+      updateContainerStatus(projectId, 'unknown');
     } finally {
       setActionLoading(false);
     }
@@ -278,8 +281,7 @@ const handleCreate = async () => {
     );
   }
 
-  const template = templateConfig[project.template];
-  const status = statusConfig[currentStatus!];
+  const status = statusConfig[currentStatus!] || statusConfig.unknown;
 
   return (
     <div className="min-h-screen bg-background">
@@ -297,6 +299,15 @@ const handleCreate = async () => {
         </div>
 
         {/* Status Alerts */}
+        {currentStatus === 'unknown' && (
+          <Alert className="mb-6 bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-800">
+            <AlertCircle className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+            <AlertDescription className="text-gray-800 dark:text-gray-200">
+              <strong>Container Not Found:</strong> This project doesn't have a container yet. Click "Create Container" to deploy it.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {currentStatus === 'inactive' && (
           <Alert className="mb-6 bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800">
             <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
@@ -332,9 +343,6 @@ const handleCreate = async () => {
                 <div className="flex items-center gap-3 mb-2 flex-wrap">
                   <CardTitle>{project.name}</CardTitle>
                   <LiveStatusBadge status={currentStatus!} />
-                  <Badge variant="outline" className={template.color}>
-                    {template.label}
-                  </Badge>
                 </div>
                 <CardDescription>
                   Created on {new Date(project.created_at).toLocaleDateString()}
@@ -342,90 +350,101 @@ const handleCreate = async () => {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-  {currentStatus === 'exited' || currentStatus === 'inactive' ? (
-    <Button onClick={handleStart} disabled={actionLoading}>
-      {actionLoading ? (
-        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-      ) : (
-        <Play className="w-4 h-4 mr-2" />
-      )}
-      {currentStatus === 'inactive' ? 'Reactivate' : 'Start'}
-    </Button>
-  ) : currentStatus === 'running' ? (
-    <>
-      <Button variant="outline" onClick={handleStop} disabled={actionLoading}>
-        {actionLoading ? (
-          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-        ) : (
-          <Square className="w-4 h-4 mr-2" />
-        )}
-        Stop
-      </Button>
-      <Button
-        variant="outline"
-        onClick={loadProject}
-        disabled={actionLoading}
-        title="Refresh metrics"
-      >
-        <RotateCw className="w-4 h-4" />
-      </Button>
-    </>
-  ) : currentStatus === 'error' ? (
-    <Button onClick={handleStart} disabled={actionLoading} variant="default">
-      {actionLoading ? (
-        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-      ) : (
-        <RotateCw className="w-4 h-4 mr-2" />
-      )}
-      Retry
-    </Button>
-  ) : currentStatus === 'unknown' ? (
-    <Button onClick={handleCreate} disabled={actionLoading}>
-      {actionLoading ? (
-        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-      ) : (
-        <Plus className="w-4 h-4 mr-2" />
-      )}
-      Create Container
-    </Button>
-  ) : null}
+                {currentStatus === 'unknown' ? (
+                  <Button onClick={handleCreate} disabled={actionLoading}>
+                    {actionLoading ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <PackagePlus className="w-4 h-4 mr-2" />
+                    )}
+                    Create Container
+                  </Button>
+                ) : currentStatus === 'exited' || currentStatus === 'inactive' || currentStatus === 'created' ? (
+                  <>
+                    <Button onClick={handleStart} disabled={actionLoading}>
+                      {actionLoading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Play className="w-4 h-4 mr-2" />
+                      )}
+                      {currentStatus === 'inactive' ? 'Reactivate' : 'Start'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleRebuild}
+                      disabled={actionLoading}
+                      title="Rebuild with latest code from GitHub"
+                    >
+                      {actionLoading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <RotateCw className="w-4 h-4 mr-2" />
+                      )}
+                      Rebuild
+                    </Button>
+                  </>
+                ) : currentStatus === 'running' ? (
+                  <>
+                    <Button variant="outline" onClick={handleStop} disabled={actionLoading}>
+                      {actionLoading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Square className="w-4 h-4 mr-2" />
+                      )}
+                      Stop
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleRebuild}
+                      disabled={actionLoading}
+                      title="Rebuild with latest code from GitHub"
+                    >
+                      {actionLoading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <RotateCw className="w-4 h-4 mr-2" />
+                      )}
+                      Rebuild
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={loadProject}
+                      disabled={actionLoading}
+                      title="Refresh metrics"
+                    >
+                      <RotateCw className="w-4 h-4" />
+                    </Button>
+                  </>
+                ) : currentStatus === 'error' ? (
+                  <Button onClick={handleStart} disabled={actionLoading} variant="default">
+                    {actionLoading ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <RotateCw className="w-4 h-4 mr-2" />
+                    )}
+                    Retry
+                  </Button>
+                ) : null}
 
-  {/* Rebuild solo para estado exited */}
-  {currentStatus === 'exited' && (
-    <Button
-      variant="outline"
-      onClick={handleRebuild}
-      disabled={actionLoading}
-      title="Rebuild with latest code from GitHub"
-    >
-      {actionLoading ? (
-        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-      ) : (
-        <RotateCw className="w-4 h-4 mr-2" />
-      )}
-      Rebuild
-    </Button>
-  )}
+                {currentStatus === 'running' && (
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(normalizeUrl(project.url), '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open
+                  </Button>
+                )}
 
-  {currentStatus === 'running' && (
-    <Button
-      variant="outline"
-      onClick={() => window.open(normalizeUrl(project.url), '_blank')}
-    >
-      <ExternalLink className="w-4 h-4 mr-2" />
-      Open
-    </Button>
-  )}
-
-  <Button
-    variant="destructive"
-    onClick={handleDelete}
-    disabled={actionLoading}
-  >
-    <Trash2 className="w-4 h-4 mr-2" />
-    Delete
-  </Button>
-</div>
+                <Button
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={actionLoading}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
             </div>
           </CardHeader>
         </Card>
@@ -483,18 +502,6 @@ const handleCreate = async () => {
 
                 <div>
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                    <Code2 className="w-4 h-4" />
-                    <span>Template</span>
-                  </div>
-                  <Badge variant="outline" className={template.color}>
-                    {template.label}
-                  </Badge>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
                     <Calendar className="w-4 h-4" />
                     <span>Created</span>
                   </div>
@@ -525,6 +532,10 @@ const handleCreate = async () => {
                     ? 'Start the container to make your application accessible.'
                     : currentStatus === 'deploying'
                     ? 'Your application is being deployed. This may take a few moments.'
+                    : currentStatus === 'unknown'
+                    ? 'No container exists for this project. Create one to deploy your application.'
+                    : currentStatus === 'inactive'
+                    ? 'Container has been paused due to inactivity. Click Reactivate to resume.'
                     : 'There was an error with your container. Please check the logs.'}
                 </p>
               </CardContent>

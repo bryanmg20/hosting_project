@@ -1,5 +1,5 @@
 from flask import Blueprint, request,jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt, create_access_token
 
 from app.modules.auth.services.core_service import AuthCoreService
 from app.modules.auth.services.validator_service import AuthValidatorService
@@ -66,20 +66,50 @@ def login():
     except Exception as e:
         return response_handler.error('Internal server error', 500)
 
+
 @auth_bp.route('/me', methods=['GET'])
 @jwt_required()
 def get_current_user():
     try:
-        user_email = get_jwt_identity()
+        identity = get_jwt_identity()       
+        claims = get_jwt()                 
+
+        print(f"Claims: {claims}", flush=True)
+        print(f"Identity: {identity}", flush=True)
+        user = {
+            "email": claims.get("email", identity),
+            "name": claims.get("name")
+        }
+
+        return jsonify({"user": user}), 200
+
+    except Exception:
+        return jsonify({"error": "Internal server error"}), 500
+
+@auth_bp.route('/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    try:
+        identity = get_jwt_identity()
         claims = get_jwt()
-        
-        user_data = auth_core._get_user_data(user_email)
-        user_data['name'] = claims.get('name', user_data['name'])
-        
-        return response_handler.user_info(user_data)
-        
+
+        new_access_token = create_access_token(
+            identity=identity,
+            additional_claims={
+                "email": claims["email"],
+                "name": claims["name"]
+            }
+        )
+
+        return jsonify({
+            "access_token": new_access_token
+        }), 200
+
     except Exception as e:
-        return response_handler.error('Internal server error', 500)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+
 
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()

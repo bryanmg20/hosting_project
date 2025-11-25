@@ -8,7 +8,7 @@ class AuthValidatorService:
         return re.match(self.email_pattern, email) is not None
     
     def validate_password(self, password):
-        return len(password) >= 6
+        return len(password) >= 8
     
     def validate_registration_data(self, data):
         if not data:
@@ -25,7 +25,7 @@ class AuthValidatorService:
             return {'valid': False, 'error': 'Invalid email format'}
         
         if not self.validate_password(password):
-            return {'valid': False, 'error': 'Password must be at least 6 characters long'}
+            return {'valid': False, 'error': 'Password must be at least 8 characters long'}
         
         return {'valid': True, 'email': email, 'password': password, 'name': name}
     

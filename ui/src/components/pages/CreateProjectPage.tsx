@@ -6,8 +6,9 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Progress } from '../ui/progress';
 import { Alert, AlertDescription } from '../ui/alert';
-import { ArrowLeft, CheckCircle2, XCircle, Loader2, Code2, Rocket, Flame, ExternalLink } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Loader2, Code2, Rocket, Flame, ExternalLink, Info } from 'lucide-react';
 import { createProject, Project } from '../../lib/api';
+import { useSSE } from '../../lib/sse-context';
 import { toast } from 'sonner@2.0.3';
 
 interface CreateProjectPageProps {
@@ -15,39 +16,27 @@ interface CreateProjectPageProps {
   onSuccess: (projectId: string) => void;
 }
 
-type Template = Project['template'];
-
-const templates: Array<{
-  id: Template;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  color: string;
-  githubUrl: string;
-}> = [
+const templates = [
   {
-    id: 'static',
     name: 'HTML/CSS/JavaScript',
     description: 'Static websites with vanilla JavaScript',
-    icon: <Code2 className="w-8 h-8" />,
-    color: 'border-blue-500 bg-blue-50 dark:bg-blue-950 dark:border-blue-700',
-    githubUrl: 'https://github.com/clouddeploy-templates/html-static',
+    icon: <Code2 className="w-6 h-6" />,
+    color: 'border-blue-500 bg-blue-50 dark:bg-blue-950/50',
+    githubUrl: 'https://github.com/SRicardo05/Plantilla_Static',
   },
   {
-    id: 'react',
     name: 'React Application',
     description: 'React apps with modern build tools',
-    icon: <Rocket className="w-8 h-8" />,
-    color: 'border-cyan-500 bg-cyan-50 dark:bg-cyan-950 dark:border-cyan-700',
-    githubUrl: 'https://github.com/clouddeploy-templates/react-app',
+    icon: <Rocket className="w-6 h-6" />,
+    color: 'border-cyan-500 bg-cyan-50 dark:bg-cyan-950/50',
+    githubUrl: 'https://github.com/SRicardo05/Plantilla_React',
   },
   {
-    id: 'flask',
     name: 'Flask Backend',
-    description: 'Python Flask web applications',
-    icon: <Flame className="w-8 h-8" />,
-    color: 'border-purple-500 bg-purple-50 dark:bg-purple-950 dark:border-purple-700',
-    githubUrl: 'https://github.com/clouddeploy-templates/flask-backend',
+    description: 'Python Flask web applications with HTML template',
+    icon: <Flame className="w-6 h-6" />,
+    color: 'border-purple-500 bg-purple-50 dark:bg-purple-950/50',
+    githubUrl: 'https://github.com/SRicardo05/Plantilla_Flask',
   },
 ];
 
@@ -57,7 +46,7 @@ export const CreateProjectPage: React.FC<CreateProjectPageProps> = ({
   onBack,
   onSuccess,
 }) => {
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const { updateContainerStatus } = useSSE();
   const [projectName, setProjectName] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
   const [deployState, setDeployState] = useState<DeployState>('idle');
@@ -67,11 +56,6 @@ export const CreateProjectPage: React.FC<CreateProjectPageProps> = ({
 
   const handleDeploy = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!selectedTemplate) {
-      toast.error('Please select a template');
-      return;
-    }
 
     setError('');
     setDeployState('deploying');
@@ -90,18 +74,21 @@ export const CreateProjectPage: React.FC<CreateProjectPageProps> = ({
       }, 200);
 
       // API Call: POST /api/projects
-      const project = await createProject(projectName, githubUrl, selectedTemplate);
+      const project = await createProject(projectName, githubUrl);
       
       clearInterval(progressInterval);
       setProgress(100);
       setDeployState('success');
       setCreatedProjectId(project.id);
+      
+      // Sincronizar estado inicial del proyecto con SSE Context
+      updateContainerStatus(project.id, project.status as any);
+      
       toast.success('Project deployed successfully!');
 
       // Auto-redirect after 2 seconds
       setTimeout(() => {
         onSuccess(project.id);
-       
       }, 2000);
     } catch (err) {
       setDeployState('error');
@@ -116,7 +103,6 @@ export const CreateProjectPage: React.FC<CreateProjectPageProps> = ({
     setError('');
     setProjectName('');
     setGithubUrl('');
-    setSelectedTemplate(null);
   };
 
   return (
@@ -129,7 +115,7 @@ export const CreateProjectPage: React.FC<CreateProjectPageProps> = ({
           Back to Dashboard
         </Button>
 
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <Card>
             <CardHeader>
               <CardTitle>Create New Project</CardTitle>
@@ -143,20 +129,20 @@ export const CreateProjectPage: React.FC<CreateProjectPageProps> = ({
                 <div className="py-8 text-center">
                   <Loader2 className="w-16 h-16 animate-spin text-blue-600 mx-auto mb-4" />
                   <h3 className="mb-2">Deploying your project...</h3>
-                  <p className="text-gray-500 mb-6">
+                  <p className="text-muted-foreground mb-6">
                     This may take a few moments
                   </p>
                   <Progress value={progress} className="max-w-md mx-auto" />
-                  <p className="text-gray-500 mt-4">{progress}%</p>
+                  <p className="text-muted-foreground mt-4">{progress}%</p>
                 </div>
               ) : deployState === 'success' ? (
                 /* Success State */
                 <div className="py-8 text-center">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 h-16 bg-green-100 dark:bg-green-950 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CheckCircle2 className="w-10 h-10 text-green-600" />
                   </div>
                   <h3 className="mb-2">Deployment Successful!</h3>
-                  <p className="text-gray-500 mb-6">
+                  <p className="text-muted-foreground mb-6">
                     Your project is now live and running
                   </p>
                   <Button onClick={() => onSuccess(createdProjectId)}>
@@ -166,46 +152,61 @@ export const CreateProjectPage: React.FC<CreateProjectPageProps> = ({
               ) : deployState === 'error' ? (
                 /* Error State */
                 <div className="py-8 text-center">
-                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-16 h-16 bg-red-100 dark:bg-red-950 rounded-full flex items-center justify-center mx-auto mb-4">
                     <XCircle className="w-10 h-10 text-red-600" />
                   </div>
                   <h3 className="mb-2">Deployment Failed</h3>
-                  <p className="text-gray-500 mb-6">{error}</p>
+                  <p className="text-muted-foreground mb-6">{error}</p>
                   <Button onClick={resetForm}>Try Again</Button>
                 </div>
               ) : (
                 /* Form */
                 <form onSubmit={handleDeploy} className="space-y-6">
-                  {/* Template Selection */}
+                  {/* Instructions */}
+                  <Alert className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+                    <Info className="w-4 h-4" />
+                    <AlertDescription>
+                      <strong className="block mb-2">How to deploy your project:</strong>
+                      <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                        <li>Choose a template below and clone it to your personal GitHub account</li>
+                        <li>Make any changes you want to your repository</li>
+                        <li>Paste your repository URL in the form below</li>
+                        <li>Deploy and watch your project come to life!</li>
+                      </ol>
+                    </AlertDescription>
+                  </Alert>
+
+                  {/* Available Templates */}
                   <div className="space-y-3">
-                    <Label>Select Template</Label>
+                    <Label>Available Templates</Label>
+                    <p className="text-muted-foreground">
+                      Clone one of these templates to your GitHub account to get started
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {templates.map((template) => (
-                        <div key={template.id} className="space-y-2">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedTemplate(template.id)}
-                            className={`w-full p-4 border-2 rounded-lg text-left transition-all hover:shadow-md ${
-                              selectedTemplate === template.id
-                                ? `${template.color} border-current`
-                                : 'border-border bg-card hover:border-muted-foreground'
-                            }`}
-                          >
-                            <div className="mb-3">{template.icon}</div>
-                            <h4 className="mb-1">{template.name}</h4>
+                      {templates.map((template, index) => (
+                        <Card key={index} className={`border-2 ${template.color}`}>
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="text-primary">{template.icon}</div>
+                              <div className="flex-1">
+                                <h4 className="text-sm font-medium leading-tight">{template.name}</h4>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
                             <p className="text-muted-foreground">{template.description}</p>
-                          </button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => window.open(template.githubUrl, '_blank')}
-                          >
-                            <ExternalLink className="w-3 h-3 mr-2" />
-                            Ver en GitHub
-                          </Button>
-                        </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => window.open(template.githubUrl, '_blank')}
+                            >
+                              <ExternalLink className="w-3 h-3 mr-2" />
+                              View on GitHub
+                            </Button>
+                          </CardContent>
+                        </Card>
                       ))}
                     </div>
                   </div>
@@ -227,11 +228,11 @@ export const CreateProjectPage: React.FC<CreateProjectPageProps> = ({
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="githubUrl">GitHub Repository URL</Label>
+                      <Label htmlFor="githubUrl">Your GitHub Repository URL</Label>
                       <Input
                         id="githubUrl"
                         type="url"
-                        placeholder="https://github.com/username/repo"
+                        placeholder="https://github.com/yourusername/your-repo"
                         value={githubUrl}
                         onChange={(e) => setGithubUrl(e.target.value)}
                         required
@@ -243,12 +244,12 @@ export const CreateProjectPage: React.FC<CreateProjectPageProps> = ({
                   </div>
 
                   {/* Preview */}
-                  {projectName && selectedTemplate && (
+                  {projectName && (
                     <Alert className="bg-muted">
                       <AlertDescription>
                         <strong>Your project will be available at:</strong>
                         <br />
-                        <code className="text-blue-600">
+                        <code className="text-blue-600 dark:text-blue-400">
                           http://{projectName}.yourusername.localhost
                         </code>
                       </AlertDescription>
@@ -268,7 +269,7 @@ export const CreateProjectPage: React.FC<CreateProjectPageProps> = ({
                     <Button
                       type="submit"
                       className="flex-1"
-                      disabled={!selectedTemplate || !projectName || !githubUrl}
+                      disabled={!projectName || !githubUrl}
                     >
                       <Rocket className="w-4 h-4 mr-2" />
                       Deploy Project

@@ -5,6 +5,7 @@
  * - POST /api/auth/login
  * - POST /api/auth/register
  * - POST /api/auth/logout
+ * - POST /api/auth/refresh
  * - GET /api/auth/me
  */
 
@@ -110,6 +111,17 @@ export const logout = async (): Promise<void> => {
     // Siempre limpiar tokens locales
     clearAuthTokens();
   }
+};
+
+// ========================================
+// POST /api/auth/refresh
+// ========================================
+// Nota: Esta función ya no se usa directamente porque el refresh
+// se maneja automáticamente en api-client.ts cuando hay un 401.
+// Se mantiene solo por compatibilidad, pero NO es necesaria.
+export const refreshAccessToken = async (): Promise<string> => {
+  // El refresh se hace automáticamente en api-client.ts
+  throw new Error('refreshAccessToken is deprecated - refresh happens automatically');
 };
 
 // ========================================
