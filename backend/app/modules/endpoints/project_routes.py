@@ -18,13 +18,12 @@ def get_projects():
     try:
 
         # 1. Obtener usuario autenticado
-        user_email = get_jwt_identity()
-        
-        if not user_email:
+        sub = get_jwt_identity()
+        if not sub:
             return error_response('User not authenticated', 401)
         
         # 2. Obtener contenedores del usuario
-        containers_result = project_service.get_user_projects(user_email)
+        containers_result = project_service.get_user_projects(sub)
         
         if not containers_result['success']:
             return error_response(
@@ -46,6 +45,9 @@ def get_projects():
 @jwt_required()
 def create_project():
 
+    sub = get_jwt_identity()
+    if not sub:
+        return error_response('User not authenticated', 401)
 
     try:
         # Validar datos
@@ -93,10 +95,10 @@ def create_project():
 @jwt_required()
 def get_project(project_id):
     try:
-        user_email = get_jwt_identity()
-        result = project_service.get_project_by_id(user_email, project_id)
+        sub = get_jwt_identity()
+        result = project_service.get_project_by_id(sub, project_id)
         
-        if not user_email:
+        if not sub:
             return error_response('User not authenticated', 401)
         
         if not result['success']:
@@ -117,9 +119,9 @@ def delete_project(project_id):
     Eliminar un proyecto específico del usuario
     """
     try:
-        user_email = get_jwt_identity()
+        sub = get_jwt_identity()
         
-        if not user_email:
+        if not sub:
             return error_response('User not authenticated', 401)
         
         # 1. Eliminar contenedor e imagen antes de eliminar proyecto
@@ -156,7 +158,7 @@ def delete_project(project_id):
             # Continuar con eliminación del proyecto aunque falle Docker cleanup
 
         # 2. Eliminar proyecto de la base de datos
-        project_result = project_service.delete_project(user_email, project_id)
+        project_result = project_service.delete_project(sub, project_id)
 
         if not project_result['success']:
             return error_response('Project not found', 404)

@@ -43,7 +43,7 @@ def sse_events():
             })
             yield f"data: {connected_data}\n\n"
             
-            # Usar el nuevo monitor de eventos basado en Docker Events
+            # Usar el monitor de eventos basado en Docker Events
             for event in monitor_containers_events(user_email):
                 yield f"event: {event['event_type']}\n"
                 yield f"data: {json.dumps(event['data'])}\n\n"

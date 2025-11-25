@@ -36,10 +36,6 @@ services:
     networks:
       - app-network
 
-volumes:
-  caddy_data:
-  caddy_config:
-
 networks:
   app-network:
     name: app-network
