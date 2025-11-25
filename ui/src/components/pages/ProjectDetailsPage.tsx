@@ -71,6 +71,12 @@ const statusConfig = {
     className: 'bg-red-500 text-white',
     dotColor: 'bg-red-500',
   },
+  removing: {
+    label: 'Removing',
+    icon: <AlertCircle className="w-4 h-4" />,
+    className: 'bg-red-500 text-white',
+    dotColor: 'bg-red-500',
+  },
   unknown: {
     label: 'Unknown',
     icon: <AlertCircle className="w-4 h-4" />,
