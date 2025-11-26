@@ -4,7 +4,9 @@
 2. docker-compose up
 
 # 1. Enlace a los repositorios con los templates dockerizados funcionales.
-
+- https://github.com/SRicardo05/Plantilla_Static
+- https://github.com/SRicardo05/Plantilla_Flask
+- https://github.com/SRicardo05/Plantilla_React
 
 # 2. Enlace al video en youtube de demostración:
 
