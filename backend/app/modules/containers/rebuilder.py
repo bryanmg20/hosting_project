@@ -8,17 +8,18 @@ import subprocess
 import shutil
 import traceback
 from docker import errors as docker_errors
-from app.modules.sse.state import _container_name_cache
 from app.modules.sse.docker_service import docker_client
+from app.modules.auth.project_service import project_service
+from app.modules.sse.utils import extract_container_name_from_url
 from .utils import cleanup_dangling_images
 
 
-def rebuild_container_logic(container_id, payload):
+def rebuild_container_logic(container_id, payload, user_email):
     """
     Reconstruye el contenedor del proyecto sin borrar el proyecto.
     
     Pasos:
-    1. Buscar nombre lógico en cache.
+    1. Buscar nombre lógico en DB.
     2. Detener y eliminar contenedor existente (si hay).
     3. Eliminar imagen asociada (por ID y por tag).
     4. Clonar repo / usar contextPath.
@@ -29,22 +30,26 @@ def rebuild_container_logic(container_id, payload):
     Args:
         container_id: ID del proyecto/contenedor
         payload: Dict con opciones (repoUrl, contextPath, buildArgs, createOptions)
+        user_email: Email del usuario autenticado
     
     Returns:
         tuple: (response_dict, status_code)
     """
-    cache_entry = _container_name_cache.get(container_id)
-    if not cache_entry:
+    # Obtener detalles del proyecto
+    project_result = project_service.get_project_by_id(user_email, container_id)
+    if not project_result['success']:
         return {
             'success': False,
-            'error': 'container_id_not_cached',
-            'message': f'No existe entry en cache para id {container_id}. Actualiza lista primero.'
+            'error': 'project_not_found',
+            'message': f'No existe proyecto con id {container_id}.'
         }, 404
 
-    print(f"[REBUILD][DEBUG] cache_entry={cache_entry!r}", flush=True)
+    project = project_result['project']
+    container_name = extract_container_name_from_url(project.get('url'))
+    
+    print(f"[REBUILD][DEBUG] project={project!r}", flush=True)
 
-    container_name = cache_entry.get('name') or f'project_{container_id}'
-    repo_url = payload.get('repoUrl') or cache_entry.get('githuburl') or ''
+    repo_url = payload.get('repoUrl') or project.get('github_url') or ''
     context_path = payload.get('contextPath')
     build_args = payload.get('buildArgs') or {}
     create_kwargs = payload.get('createOptions') or {}

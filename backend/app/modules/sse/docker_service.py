@@ -1,7 +1,8 @@
 import docker
 from datetime import datetime
 from typing import Dict, List
-from app.modules.sse.state import _current_containers, _container_name_cache
+from app.modules.sse.state import _current_containers
+from app.modules.sse.utils import extract_container_name_from_url
 
 # Cliente Docker
 docker_client = docker.from_env()
@@ -167,10 +168,9 @@ def get_containers_metrics(user_email: str) -> List[Dict]:
             
         container_id = container.get('_id')
         
-        # Fix: Evitar error 'str object has no attribute get' cuando no está en caché
-        # Usar {} como valor por defecto para asegurar que siempre tratamos con un dict
-        cache_entry = _container_name_cache.get(container_id, {})
-        container_name = cache_entry.get('name', container_id)
+        # Obtener nombre directamente de la URL
+        url = container.get('url', '')
+        container_name = extract_container_name_from_url(url)
         
         if container_id:
             # Obtener métricas sin importar el estado

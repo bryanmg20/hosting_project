@@ -3,7 +3,7 @@ import threading
 import time
 import docker
 from datetime import datetime
-from app.modules.sse.state import _current_containers, _container_name_cache
+from app.modules.sse.state import _current_containers
 from app.modules.sse.utils import extract_container_name_from_url
 from app.modules.sse.docker_service import get_containers_metrics
 
@@ -22,12 +22,10 @@ def monitor_containers_events(user_email: str):
         for c in containers:
             cid = c.get('_id')
             if cid:
-                # Intentar obtener nombre de cache o construirlo
-                cname = _container_name_cache.get(cid, {}).get('name')
-                if not cname:
-                    # Fallback si no está en cache
-                    url = c.get('url', '')
-                    cname = extract_container_name_from_url(url)
+                # Obtener nombre directamente de la URL del contenedor en _current_containers
+                # Esto asegura que solo procesamos contenedores que pertenecen al usuario
+                url = c.get('url', '')
+                cname = extract_container_name_from_url(url)
                 
                 if cname:
                     c_map[cname] = cid

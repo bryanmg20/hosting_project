@@ -3,7 +3,6 @@ from app.modules.sse.utils import extract_container_name_from_url
 
 # Estado global para persistencia
 _current_containers = {}  # {user_email: [container_list]}
-_container_name_cache = {}  # {container_id: container_name}
 
 def update_user_containers(user_email: str) -> bool:
     """
@@ -16,26 +15,9 @@ def update_user_containers(user_email: str) -> bool:
        
         if containers_result['success']:
             containers = containers_result.get('projects', [])
-         
-            # Extraer y cachear nombres de contenedores desde las URLs
-            for container in containers:
-                container_id = container.get('_id')
-                container_url = container.get('url', '')
-                githuburl = container.get('github_url', '')
-                # Extraer nombre del contenedor desde la URL
-                container_name = extract_container_name_from_url(container_url)
-
-                _container_name_cache[container_id] = {
-                    "name": container_name,
-                    "githuburl": githuburl
-                }
-               
-            
             _current_containers[user_email] = containers
-         
             return True
         else:
-           
             return False
             
     except Exception as e:
@@ -43,6 +25,5 @@ def update_user_containers(user_email: str) -> bool:
 
 def reset_states():
     """Resetear estados"""
-    global _current_containers, _container_name_cache
+    global _current_containers
     _current_containers = {}
-    _container_name_cache = {}
