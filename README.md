@@ -10,7 +10,7 @@
 - https://github.com/SRicardo05/Plantilla_React
 
 # 2. Enlace al video en youtube de demostración:
-
+https://youtu.be/LKWijYIJtyg
 
 # 3. Documento tecnico
 
