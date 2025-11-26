@@ -184,3 +184,14 @@ Si el usuario hace clic en un proyecto, se muestra la página de detalles con op
 Si el usuario quiere eliminar un proyecto, hace clic en delete, se detiene el contenedor Docker, se elimina de Docker, se elimina el registro de la base de datos y la UI se actualiza removiendo el proyecto.
 Cuando el usuario decide salir, hace logout y sus tokens se limpian de localStorage, su sesión se cierra en el backend, y se redirige a la página de login.
 
+## Estrategia de seguridad y optimización de recurso
+La plataforma combina seguridad por capas y optimización de recursos para garantizar estabilidad y aislamiento. Se emplean autenticación estricta, rate limiting, validación robusta y contenedores aislados; mientras que la eficiencia se logra mediante apagado por inactividad, límites de CPU/memoria, reutilización de imágenes y uso de SSE para un monitoreo ligero y en tiempo real.
+
+### 1. Seguridad: 
+
+#### 1.1 Autenticación obligatoria
+La plataforma implementa un modelo de seguridad basado en autenticación estricta, lo que significa que ningún usuario puede crear proyectos, iniciar contenedores, detenerlos, eliminarlos o acceder al estado del despliegue sin estar autenticado. Todos los endpoints sensibles están protegidos con tokens JWT, los cuales deben ser enviados en cada petición. Esto garantiza que solo usuarios válidos y autorizados puedan interactuar con la infraestructura, evitando accesos no deseados y protegiendo la integridad de los proyectos y los recursos del servidor.
+#### 1.2 Rate limiting y protección mediante Nginx
+Para prevenir abusos, ataques automatizados y picos de tráfico maliciosos, el sistema utiliza Nginx como primera capa defensiva aplicando límites de solicitudes por IP. La directiva limit_req_zone $binary_remote_addr zone=one:10m rate=150r/m define una zona en memoria compartida que registra y controla cuántas solicitudes puede enviar cada cliente en un minuto. Si se excede este límite, Nginx devuelve un código 429 – Too Many Requests, evitando que un usuario o bot pueda saturar el backend. Esto protege al servidor de sobrecarga, preserva la disponibilidad del servicio y asegura un comportamiento estable de la plataforma incluso bajo alta concurrencia.
+#### 1.3 Separación total entre usuarios
+Cada proyecto se ejecuta dentro de un contenedor completamente aislado, lo que garantiza que los entornos de diferentes usuarios no se mezclen ni interfieran entre sí. Este aislamiento se refuerza con validaciones internas que aseguran que cada acción realizada sobre un contenedor corresponda exclusivamente al usuario propietario. El backend verifica que el usuario autenticado sea efectivamente el dueño del contenedor antes de permitir cualquier operación como iniciar, detener o eliminar el proyecto. Si un usuario intenta acceder a un contenedor que no le pertenece, el sistema lo bloquea inmediatamente. Esta separación garantiza seguridad, privacidad y protección frente a accesos indebidos entre cuentas.
