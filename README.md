@@ -12,7 +12,7 @@
 # 3. Documento tecnico
 
 ## ARQUITECTURA CLIENTE-SERVIDOR
- ![alt text](<Diagrama arq PC2.jpg>)
+ ![alt text](<Diagrama_arq_PC2.jpg>)
 
 ## Descripcion de componentes
 
