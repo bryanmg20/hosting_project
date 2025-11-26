@@ -215,17 +215,28 @@ export const CreateProjectPage: React.FC<CreateProjectPageProps> = ({
                   <div className="space-y-4 pt-4 border-t">
                     <div className="space-y-2">
                       <Label htmlFor="projectName">Project Name</Label>
+                      <p className="text-muted-foreground">
+                       Only lowercase letters and hyphens are allowed. No spaces or special characters.
+                      </p>
                       <Input
                         id="projectName"
                         placeholder="my-awesome-project"
                         value={projectName}
-                        onChange={(e) => setProjectName(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+
+                          // Permite solo a-z y -
+                          if (/^[a-z-]*$/.test(value)) {
+                            setProjectName(value);
+                          }
+                        }}
                         required
                       />
                       <p className="text-muted-foreground">
                         This will be used in your project URL
                       </p>
                     </div>
+
 
                     <div className="space-y-2">
                       <Label htmlFor="githubUrl">Your GitHub Repository URL</Label>
