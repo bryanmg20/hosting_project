@@ -6,7 +6,7 @@
 # 1. Enlace a los repositorios con los templates dockerizados funcionales.
 
 
-# 2. Enlace al video en youtube de demostración mostrando:
+# 2. Enlace al video en youtube de demostración:
 
 
 # 3. Documento tecnico
