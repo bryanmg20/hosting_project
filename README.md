@@ -45,7 +45,7 @@ SSE Module: Mantiene una conexión abierta con el cliente frontend. Constantemen
 Docker Service: Es un módulo que se comunica directamente con el Docker Engine. Obtiene lista de contenedores, consulta su estado actual, inicia/detiene/reinicia contenedores, crea nuevas imágenes, elimina contenedores e imágenes, y obtiene información de recursos utilizados.
 
 ### 5. Roble DB (Base de Datos)
-Roble es una base de datos serverless donde se almacenan los datos de la aplicación. Tiene dos tablas principales:
+Roble es una base de datos donde se almacenan los datos de la aplicación. Tiene dos tablas principales:
 Tabla user: Almacena información de los usuarios registrados. La clave primaria es el email del usuario (no puede repetirse). También guarda el nombre de usuario. Cada usuario es único en el sistema.
 Tabla projects: Almacena información de los proyectos creados por usuarios. Tiene un ID auto-generado por la base de datos como clave primaria (único para cada proyecto). El email es una clave foránea que referencia al propietario del proyecto. El nombre del proyecto también debe ser único (no puede haber dos proyectos con el mismo nombre). Guarda la URL del proyecto (generada automáticamente del nombre), la URL del repositorio GitHub de donde se descarga el código, y la fecha de creación del proyecto.
 
