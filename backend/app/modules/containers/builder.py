@@ -8,32 +8,36 @@ import subprocess
 import shutil
 import traceback as _tb
 from docker import errors as docker_errors
-from app.modules.sse.state import _container_name_cache
 from app.modules.sse.docker_service import docker_client
+from app.modules.auth.services.project_service import project_service
+from app.modules.sse.utils import extract_container_name_from_url
 from .utils import cleanup_dangling_images
 
 
-def create_container_logic(container_id, payload):
+def create_container_logic(container_id, payload, user_email):
     """
     Construye la imagen Docker del proyecto y crea el contenedor.
     
     Args:
         container_id: ID del proyecto/contenedor
         payload: Dict con opciones (repoUrl, contextPath, buildArgs, createOptions)
+        user_email: Email del usuario autenticado
     
     Returns:
         tuple: (response_dict, status_code)
     """
-    cache_entry = _container_name_cache.get(container_id)
-    if not cache_entry:
+    # Obtener detalles del proyecto
+    project_result = project_service.get_project_by_id(user_email, container_id)
+    if not project_result['success']:
         return {
             'success': False,
-            'error': 'container_id_not_cached',
-            'message': f'No existe entry en cache para id {container_id}. Actualiza lista primero.'
+            'error': 'project_not_found',
+            'message': f'No existe proyecto con id {container_id}.'
         }, 404
 
-    container_name = cache_entry.get('name') or f'project_{container_id}'
-    repo_url = payload.get('repoUrl') or cache_entry.get('githuburl') or ''
+    project = project_result['project']
+    container_name = extract_container_name_from_url(project.get('url'))
+    repo_url = payload.get('repoUrl') or project.get('github_url') or ''
     context_path = payload.get('contextPath')
     build_args = payload.get('buildArgs') or {}
 

@@ -16,7 +16,7 @@ def start_container(container_id):
     if not sub:
         return error_response('User not authenticated', 401)
     
-    response, status = start_container_logic(container_id)
+    response, status = start_container_logic(container_id, sub)
     return jsonify(response), status
 
 
@@ -28,7 +28,7 @@ def stop_container(container_id):
     if not sub:
         return error_response('User not authenticated', 401)
     
-    response, status = stop_container_logic(container_id)
+    response, status = stop_container_logic(container_id, sub)
     return jsonify(response), status
 
 
@@ -41,7 +41,7 @@ def restart_container(container_id):
         return error_response('User not authenticated', 401)
     
     payload = request.get_json(silent=True) or {}
-    response, status = rebuild_container_logic(container_id, payload)
+    response, status = rebuild_container_logic(container_id, payload, sub)
     return jsonify(response), status
 
 
@@ -54,6 +54,6 @@ def create_container(container_id):
         return error_response('User not authenticated', 401)
     
     payload = request.get_json(silent=True) or {}
-    response, status = create_container_logic(container_id, payload)
+    response, status = create_container_logic(container_id, payload, sub)
     return jsonify(response), status
 
