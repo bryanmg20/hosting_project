@@ -184,7 +184,7 @@ Si el usuario hace clic en un proyecto, se muestra la página de detalles con op
 Si el usuario quiere eliminar un proyecto, hace clic en delete, se detiene el contenedor Docker, se elimina de Docker, se elimina el registro de la base de datos y la UI se actualiza removiendo el proyecto.
 Cuando el usuario decide salir, hace logout y sus tokens se limpian de localStorage, su sesión se cierra en el backend, y se redirige a la página de login.
 
-## Estrategia de seguridad y optimización de recurso
+## Estrategia de seguridad y optimización de recursos
 La plataforma combina seguridad por capas y optimización de recursos para garantizar estabilidad y aislamiento. Se emplean autenticación estricta, rate limiting, validación robusta y contenedores aislados; mientras que la eficiencia se logra mediante apagado por inactividad, límites de CPU/memoria, reutilización de imágenes y uso de SSE para un monitoreo ligero y en tiempo real.
 
 ### 1. Seguridad: 
