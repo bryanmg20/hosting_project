@@ -9,7 +9,7 @@ import shutil
 import traceback
 from docker import errors as docker_errors
 from app.modules.sse.docker_service import docker_client
-from app.modules.auth.services.project_service import project_service
+from app.modules.auth.project_service import project_service
 from app.modules.sse.utils import extract_container_name_from_url
 from .utils import cleanup_dangling_images
 

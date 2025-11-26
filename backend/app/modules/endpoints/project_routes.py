@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from app.modules.sse.docker_service import docker_client
-from app.modules.auth.services.project_service import project_service
+from app.modules.auth.project_service import project_service
 from app.modules.project.validators import validate_create_project_data
 from app.modules.project.project_logic import format_project_list, format_project_response, create_new_project_data
 from app.modules.project.responses import success_response, list_response, error_response
